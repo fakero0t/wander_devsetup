@@ -1,0 +1,117 @@
+# API deployment and service
+# This file uses envsubst for variable substitution (${NODE_ENV}, ${API_COMMAND}, ${DEV_API_VOLUME})
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: wander-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+      - name: api
+        image: wander-api:latest
+        imagePullPolicy: IfNotPresent
+        command: ${API_COMMAND}
+        ports:
+        - containerPort: 4000
+        - containerPort: 9229
+        env:
+        - name: DATABASE_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: wander-config
+              key: DATABASE_HOST
+        - name: DATABASE_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: wander-config
+              key: DATABASE_PORT
+        - name: DATABASE_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: wander-config
+              key: DATABASE_NAME
+        - name: DATABASE_USER
+          valueFrom:
+            configMapKeyRef:
+              name: wander-config
+              key: DATABASE_USER
+        - name: DATABASE_PASSWORD
+          value: "dev_password"
+        - name: DATABASE_POOL_SIZE
+          valueFrom:
+            configMapKeyRef:
+              name: wander-config
+              key: DATABASE_POOL_SIZE
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: wander-config
+              key: REDIS_HOST
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: wander-config
+              key: REDIS_PORT
+        - name: NODE_ENV
+          value: "${NODE_ENV}"
+        - name: API_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: wander-config
+              key: API_PORT
+        - name: API_LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: wander-config
+              key: API_LOG_LEVEL
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 4000
+          initialDelaySeconds: 20
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 4000
+          initialDelaySeconds: 25
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+${DEV_API_VOLUME}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: wander-dev
+spec:
+  selector:
+    app: api
+  ports:
+  - port: 4000
+    targetPort: 4000
+    name: http
+  - port: 9229
+    targetPort: 9229
+    name: debug
+  type: ClusterIP
+

@@ -1,0 +1,6 @@
+# Kubernetes namespace for Wander application
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: wander-dev
+

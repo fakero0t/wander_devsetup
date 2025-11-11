@@ -1,0 +1,25 @@
+# ConfigMap for Wander application environment variables
+# This file uses envsubst for variable substitution (${NODE_ENV})
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wander-config
+  namespace: wander-dev
+data:
+  DATABASE_HOST: postgres
+  DATABASE_PORT: "5432"
+  DATABASE_NAME: wander_dev
+  DATABASE_USER: postgres
+  DATABASE_POOL_SIZE: "10"
+  API_HOST: 0.0.0.0
+  API_PORT: "4000"
+  API_DEBUG_PORT: "9229"
+  API_LOG_LEVEL: debug
+  NODE_ENV: ${NODE_ENV}
+  FRONTEND_HOST: 0.0.0.0
+  FRONTEND_PORT: "3000"
+  VITE_API_URL: http://localhost:4000
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  ENVIRONMENT: development
+
