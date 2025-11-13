@@ -105,73 +105,73 @@ export function ProjectDetail() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white pb-20">
-      <div className="container mx-auto p-4">
+    <div className="container mx-auto p-4">
         <div className="bg-gray-800 p-6 rounded-lg mb-6">
           <h1 className="text-3xl font-bold mb-2">{project.name}</h1>
           <p className="text-gray-300 mb-4">{project.description}</p>
-          <span className={`text-xs px-2 py-1 rounded ${
+        <span className={`text-xs px-2 py-1 rounded ${
             project.status === 'active' ? 'bg-green-500 text-white' :
             project.status === 'planning' ? 'bg-yellow-500 text-white' :
             'bg-gray-600 text-white'
-          }`}>
-            {project.status}
-          </span>
-        </div>
+        }`}>
+          {project.status}
+        </span>
+      </div>
 
-        <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">Reviews</h2>
-          <button
-            onClick={() => handleOpenModal()}
+        <button
+          onClick={() => handleOpenModal()}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
+        >
             Add Review
-          </button>
-        </div>
+        </button>
+      </div>
 
-        {tasks.length === 0 ? (
+      {tasks.length === 0 ? (
           <div className="text-center p-8 text-gray-400">
             No reviews for this property yet.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {tasks.map(task => {
-              const assignedUser = users.find(u => u.id === task.assigned_to);
-              return (
-                <div 
-                  key={task.id} 
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {tasks.map(task => {
+            const assignedUser = users.find(u => u.id === task.assigned_to);
+            return (
+              <div 
+                key={task.id} 
                   className="bg-gray-800 p-4 rounded-lg hover:bg-gray-750 cursor-pointer transition-colors"
-                  onClick={() => handleOpenModal(task)}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-semibold">{task.title}</h3>
-                    <div className="flex gap-2">
-                      <span className={`text-xs px-2 py-1 rounded ${
+                onClick={() => handleOpenModal(task)}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="font-semibold">{task.title}</h3>
+                  <div className="flex gap-2">
+                    <span className={`text-xs px-2 py-1 rounded ${
                         task.priority === 'high' ? 'bg-yellow-500 text-white' :
                         task.priority === 'medium' ? 'bg-blue-500 text-white' :
                         'bg-green-500 text-white'
-                      }`}>
-                        {task.priority}
-                      </span>
-                      <span className={`text-xs px-2 py-1 rounded ${
+                    }`}>
+                      {task.priority}
+                    </span>
+                    <span className={`text-xs px-2 py-1 rounded ${
                         task.status === 'done' ? 'bg-green-500 text-white' :
                         task.status === 'in_progress' ? 'bg-blue-500 text-white' :
                         'bg-gray-600 text-white'
-                      }`}>
-                        {task.status.replace('_', ' ')}
-                      </span>
-                    </div>
+                    }`}>
+                      {task.status.replace('_', ' ')}
+                    </span>
                   </div>
+                </div>
                   <p className="text-sm text-gray-300 mb-2">{task.description}</p>
                   <p className="text-xs text-gray-400">
                     {assignedUser ? `By: ${assignedUser.name}` : 'Anonymous'}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
-        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
         <form onSubmit={handleSubmit}>
           <ModalHeader>{editingTask ? 'Edit Review' : 'Add Review'}</ModalHeader>
           <ModalBody>
@@ -252,7 +252,7 @@ export function ProjectDetail() {
             </button>
           </ModalFooter>
         </form>
-        </Modal>
+      </Modal>
       </div>
     </div>
   );

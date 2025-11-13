@@ -32,24 +32,31 @@ dev: install-prereqs validate ## Start the entire development environment
 	@echo "🚀 Starting Wander Development Environment"
 	@echo "════════════════════════════════════════"
 	@echo ""
-	@echo "Step 1/8: Checking system requirements..."
+	@echo "Step 1/9: Checking system requirements..."
 	./scripts/preflight-check.sh
 	@echo ""
-	@echo "Step 2/8: Loading configuration..."
+	@if [ "$(SKIP_CONFIG)" != "true" ]; then \
+		echo "Step 2/9: Configuring environment..."; \
+		echo "  Opening configuration editor..."; \
+		node scripts/config-editor-server.js || (echo "❌ Configuration cancelled or failed" && exit 1); \
+		echo "  ✓ Configuration saved"; \
+		echo ""; \
+	fi
+	@echo "Step 3/9: Loading configuration..."
 	@node scripts/load-config.js >/dev/null 2>&1 || (echo "❌ Configuration error. Please check your setup." && exit 1)
 	@echo "  ✓ Configuration loaded"
 	@echo ""
-	@echo "Step 3/8: Preparing deployment files..."
+	@echo "Step 4/9: Preparing deployment files..."
 	mkdir -p .pids infra/generated
 	@export WORKSPACE_PATH=$(WORKSPACE_PATH) && ./scripts/prepare-manifests.sh
 	@echo ""
-	@echo "Step 4/8: Building application images..."
+	@echo "Step 5/9: Building application images..."
 	@echo "  Building API server..."
 	@(if minikube status 2>/dev/null | grep -q Running; then eval $$(minikube docker-env); fi; docker build --quiet -t wander-api:latest -f services/api/Dockerfile$(DOCKERFILE_SUFFIX) . >/dev/null 2>&1 && echo "  ✓ API image built" || (echo "  ❌ Failed to build API image" && exit 1))
 	@echo "  Building frontend..."
 	@(if minikube status 2>/dev/null | grep -q Running; then eval $$(minikube docker-env); fi; docker build --quiet -t wander-frontend:latest -f services/frontend/Dockerfile$(DOCKERFILE_SUFFIX) . >/dev/null 2>&1 && echo "  ✓ Frontend image built" || (echo "  ❌ Failed to build frontend image" && exit 1))
 	@echo ""
-	@echo "Step 5/8: Deploying to Kubernetes..."
+	@echo "Step 6/9: Deploying to Kubernetes..."
 	@kubectl apply -f infra/generated/namespace.yaml >/dev/null 2>&1 && echo "  ✓ Namespace created"
 	@kubectl apply -f infra/generated/configmap.yaml >/dev/null 2>&1 && echo "  ✓ Configuration applied"
 	@kubectl apply -f infra/generated/seed-configmap.yaml >/dev/null 2>&1 && echo "  ✓ Database seed prepared"
@@ -58,15 +65,26 @@ dev: install-prereqs validate ## Start the entire development environment
 	@kubectl apply -f infra/generated/api.yaml >/dev/null 2>&1 && echo "  ✓ API server deployed"
 	@kubectl apply -f infra/generated/frontend.yaml >/dev/null 2>&1 && echo "  ✓ Frontend deployed"
 	@echo ""
-	@echo "Step 6/8: Waiting for services to be healthy..."
+	@echo "Step 7/9: Waiting for services to be healthy..."
 	./scripts/wait-for-services.sh
 	@echo ""
-	@echo "Step 7/8: Setting up network connections..."
-	@kubectl port-forward -n $(NAMESPACE) svc/frontend $(FRONTEND_PORT):3000 >/dev/null 2>&1 & echo $$! > .pids/frontend.pid && echo "  ✓ Frontend: http://localhost:$(FRONTEND_PORT)"
-	@kubectl port-forward -n $(NAMESPACE) svc/api $(API_PORT):4000 >/dev/null 2>&1 & echo $$! > .pids/api.pid && echo "  ✓ API: http://localhost:$(API_PORT)"
-	@kubectl port-forward -n $(NAMESPACE) svc/postgres $(POSTGRES_PORT):5432 >/dev/null 2>&1 & echo $$! > .pids/postgres.pid && echo "  ✓ Database: localhost:$(POSTGRES_PORT)"
-	@kubectl port-forward -n $(NAMESPACE) svc/redis $(REDIS_PORT):6379 >/dev/null 2>&1 & echo $$! > .pids/redis.pid && echo "  ✓ Cache: localhost:$(REDIS_PORT)"
+	@echo "Step 8/9: Setting up network connections..."
+	@echo "  Cleaning up any existing connections..."
+	@if [ -d .pids ]; then \
+		for pid_file in .pids/*.pid; do \
+			[ -f "$$pid_file" ] && kill $$(cat "$$pid_file") 2>/dev/null || true; \
+		done; \
+		rm -rf .pids; \
+	fi
+	@mkdir -p .pids
+	@echo "  Setting up port forwards..."
+	@kubectl port-forward -n $(NAMESPACE) svc/frontend $(FRONTEND_PORT):3000 >/dev/null 2>&1 & echo $$! > .pids/frontend.pid && echo "  ✓ Frontend: http://localhost:$(FRONTEND_PORT)" || (echo "  ⚠️  Frontend port-forward failed" && exit 1)
+	@kubectl port-forward -n $(NAMESPACE) svc/api $(API_PORT):4000 >/dev/null 2>&1 & echo $$! > .pids/api.pid && echo "  ✓ API: http://localhost:$(API_PORT)" || (echo "  ⚠️  API port-forward failed" && exit 1)
+	@kubectl port-forward -n $(NAMESPACE) svc/postgres $(POSTGRES_PORT):5432 >/dev/null 2>&1 & echo $$! > .pids/postgres.pid && echo "  ✓ Database: localhost:$(POSTGRES_PORT)" || (echo "  ⚠️  Database port-forward failed" && exit 1)
+	@kubectl port-forward -n $(NAMESPACE) svc/redis $(REDIS_PORT):6379 >/dev/null 2>&1 & echo $$! > .pids/redis.pid && echo "  ✓ Cache: localhost:$(REDIS_PORT)" || (echo "  ⚠️  Cache port-forward failed" && exit 1)
 	@sleep 2
+	@echo ""
+	@echo "Step 9/9: Environment ready!"
 	@echo ""
 	@echo "════════════════════════════════════════"
 	@echo "✅ Environment is ready!"

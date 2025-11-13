@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wander Configuration Editor</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      line-height: 1.6;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    header {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    h1 {
+      color: #2563eb;
+      margin-bottom: 10px;
+    }
+    
+    .subtitle {
+      color: #666;
+      font-size: 14px;
+    }
+    
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .tab {
+      padding: 10px 20px;
+      border: none;
+      background: #e5e7eb;
+      color: #666;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    
+    .tab:hover {
+      background: #d1d5db;
+    }
+    
+    .tab.active {
+      background: #2563eb;
+      color: white;
+    }
+    
+    .tab-content {
+      display: none;
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+    
+    .config-section {
+      margin-bottom: 30px;
+    }
+    
+    .config-section h3 {
+      color: #1f2937;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    
+    .field {
+      margin-bottom: 20px;
+    }
+    
+    .field label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 5px;
+      color: #374151;
+    }
+    
+    .field input,
+    .field select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+    
+    .field input:focus,
+    .field select:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    
+    .field small {
+      display: block;
+      margin-top: 5px;
+      color: #6b7280;
+      font-size: 12px;
+    }
+    
+    .actions {
+      position: sticky;
+      bottom: 0;
+      background: white;
+      padding: 20px;
+      border-top: 1px solid #e5e7eb;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 30px;
+    }
+    
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .btn-primary {
+      background: #2563eb;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: #1d4ed8;
+    }
+    
+    .btn-secondary {
+      background: #e5e7eb;
+      color: #374151;
+    }
+    
+    .btn-secondary:hover {
+      background: #d1d5db;
+    }
+    
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .message {
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    
+    .message.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+      display: block;
+    }
+    
+    /* Modal styles */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .modal.active {
+      display: flex;
+    }
+    
+    .modal-content {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      text-align: center;
+    }
+    
+    .modal-content h2 {
+      color: #2563eb;
+      margin-bottom: 15px;
+      font-size: 24px;
+    }
+    
+    .modal-content p {
+      color: #666;
+      margin-bottom: 20px;
+      font-size: 16px;
+    }
+    
+    .modal-content .btn {
+      padding: 10px 20px;
+    }
+    
+    .file-selector {
+      background: #fef3c7;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      border: 1px solid #fde047;
+    }
+    
+    .file-selector label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+    
+    .file-selector input[type="radio"] {
+      width: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Wander Configuration Editor</h1>
+      <div class="subtitle" id="fileInfo">Editing configuration file</div>
+    </header>
+    
+    <div id="fileSelector" class="file-selector" style="display: none;">
+      <label>
+        <input type="radio" name="targetFile" value="config.yaml" checked>
+        <span>Edit main config (config.yaml)</span>
+      </label>
+      <label style="margin-top: 10px;">
+        <input type="radio" name="targetFile" value="config.local.yaml">
+        <span>Edit local overrides (config.local.yaml)</span>
+      </label>
+    </div>
+    
+    <div id="message" class="message"></div>
+    
+    <!-- Success Modal -->
+    <div id="successModal" class="modal" onclick="if(event.target === this) window.close()">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <h2>✓ Configuration Saved!</h2>
+        <p>You can now close this window.</p>
+        <button class="btn btn-primary" onclick="window.close()">Close Window</button>
+      </div>
+    </div>
+    
+    <div class="tabs">
+      <button class="tab active" data-tab="defaults">Defaults</button>
+      <button class="tab" data-tab="development">Development</button>
+      <button class="tab" data-tab="production">Production</button>
+    </div>
+    
+    <div id="defaults" class="tab-content active">
+      <div class="config-section">
+        <h3>Database Configuration</h3>
+        <div class="field">
+          <label for="defaults.database.host">Database Host</label>
+          <input type="text" id="defaults.database.host" name="defaults.database.host">
+          <small>Database hostname (K8s service name or localhost)</small>
+        </div>
+        <div class="field">
+          <label for="defaults.database.port">Database Port</label>
+          <input type="number" id="defaults.database.port" name="defaults.database.port" min="1" max="65535">
+          <small>Database port (1-65535)</small>
+        </div>
+        <div class="field">
+          <label for="defaults.database.name">Database Name</label>
+          <input type="text" id="defaults.database.name" name="defaults.database.name">
+          <small>Database name</small>
+        </div>
+        <div class="field">
+          <label for="defaults.database.user">Database User</label>
+          <input type="text" id="defaults.database.user" name="defaults.database.user">
+          <small>Database username</small>
+        </div>
+        <div class="field">
+          <label for="defaults.database.password">Database Password</label>
+          <input type="text" id="defaults.database.password" name="defaults.database.password">
+          <small>Database password (use ${VAR} for env vars)</small>
+        </div>
+        <div class="field">
+          <label for="defaults.database.poolSize">Database Pool Size</label>
+          <input type="number" id="defaults.database.poolSize" name="defaults.database.poolSize" min="1">
+          <small>Connection pool size (positive integer)</small>
+        </div>
+      </div>
+      
+      <div class="config-section">
+        <h3>API Configuration</h3>
+        <div class="field">
+          <label for="defaults.api.host">API Host</label>
+          <input type="text" id="defaults.api.host" name="defaults.api.host">
+          <small>API bind address (0.0.0.0 for all interfaces)</small>
+        </div>
+        <div class="field">
+          <label for="defaults.api.port">API Port</label>
+          <input type="number" id="defaults.api.port" name="defaults.api.port" min="1" max="65535">
+          <small>API server port (1-65535)</small>
+        </div>
+        <div class="field">
+          <label for="defaults.api.debugPort">API Debug Port</label>
+          <input type="number" id="defaults.api.debugPort" name="defaults.api.debugPort" min="1" max="65535">
+          <small>Node.js debugger port (1-65535)</small>
+        </div>
+        <div class="field">
+          <label for="defaults.api.logLevel">API Log Level</label>
+          <select id="defaults.api.logLevel" name="defaults.api.logLevel">
+            <option value="debug">debug</option>
+            <option value="info">info</option>
+            <option value="warn">warn</option>
+            <option value="error">error</option>
+          </select>
+          <small>Log level: debug, info, warn, or error</small>
+        </div>
+      </div>
+      
+      <div class="config-section">
+        <h3>Frontend Configuration</h3>
+        <div class="field">
+          <label for="defaults.frontend.host">Frontend Host</label>
+          <input type="text" id="defaults.frontend.host" name="defaults.frontend.host">
+          <small>Frontend bind address</small>
+        </div>
+        <div class="field">
+          <label for="defaults.frontend.port">Frontend Port</label>
+          <input type="number" id="defaults.frontend.port" name="defaults.frontend.port" min="1" max="65535">
+          <small>Frontend server port (1-65535)</small>
+        </div>
+        <div class="field">
+          <label for="defaults.frontend.apiUrl">Frontend API URL</label>
+          <input type="url" id="defaults.frontend.apiUrl" name="defaults.frontend.apiUrl">
+          <small>API URL for frontend (use localhost for port-forward)</small>
+        </div>
+      </div>
+      
+      <div class="config-section">
+        <h3>Redis Configuration</h3>
+        <div class="field">
+          <label for="defaults.redis.host">Redis Host</label>
+          <input type="text" id="defaults.redis.host" name="defaults.redis.host">
+          <small>Redis hostname (K8s service name or localhost)</small>
+        </div>
+        <div class="field">
+          <label for="defaults.redis.port">Redis Port</label>
+          <input type="number" id="defaults.redis.port" name="defaults.redis.port" min="1" max="65535">
+          <small>Redis port (1-65535)</small>
+        </div>
+      </div>
+      
+      <div class="config-section">
+        <h3>General Configuration</h3>
+        <div class="field">
+          <label for="defaults.environment">Environment</label>
+          <input type="text" id="defaults.environment" name="defaults.environment">
+          <small>Environment name (development, production, etc.)</small>
+        </div>
+        <div class="field">
+          <label for="defaults.nodeEnv">Node Environment</label>
+          <select id="defaults.nodeEnv" name="defaults.nodeEnv">
+            <option value="development">development</option>
+            <option value="production">production</option>
+          </select>
+          <small>Node.js environment (development, production)</small>
+        </div>
+      </div>
+    </div>
+    
+    <div id="development" class="tab-content">
+      <div class="config-section">
+        <h3>Development Environment Overrides</h3>
+        <p style="color: #6b7280; margin-bottom: 20px;">Override default values for development environment. Leave empty to use defaults.</p>
+        
+        <div class="field">
+          <label for="environments.development.database.name">Database Name (override)</label>
+          <input type="text" id="environments.development.database.name" name="environments.development.database.name">
+          <small>Override database name for development</small>
+        </div>
+        <div class="field">
+          <label for="environments.development.database.password">Database Password (override)</label>
+          <input type="text" id="environments.development.database.password" name="environments.development.database.password">
+          <small>Override database password for development</small>
+        </div>
+        <div class="field">
+          <label for="environments.development.api.logLevel">API Log Level (override)</label>
+          <select id="environments.development.api.logLevel" name="environments.development.api.logLevel">
+            <option value="">Use default</option>
+            <option value="debug">debug</option>
+            <option value="info">info</option>
+            <option value="warn">warn</option>
+            <option value="error">error</option>
+          </select>
+          <small>Override log level for development</small>
+        </div>
+      </div>
+    </div>
+    
+    <div id="production" class="tab-content">
+      <div class="config-section">
+        <h3>Production Environment Overrides</h3>
+        <p style="color: #6b7280; margin-bottom: 20px;">Override default values for production environment. Leave empty to use defaults.</p>
+        
+        <div class="field">
+          <label for="environments.production.database.name">Database Name (override)</label>
+          <input type="text" id="environments.production.database.name" name="environments.production.database.name">
+          <small>Override database name for production</small>
+        </div>
+        <div class="field">
+          <label for="environments.production.database.password">Database Password (override)</label>
+          <input type="text" id="environments.production.database.password" name="environments.production.database.password">
+          <small>Override database password for production (use ${VAR} for env vars)</small>
+        </div>
+        <div class="field">
+          <label for="environments.production.api.logLevel">API Log Level (override)</label>
+          <select id="environments.production.api.logLevel" name="environments.production.api.logLevel">
+            <option value="">Use default</option>
+            <option value="debug">debug</option>
+            <option value="info">info</option>
+            <option value="warn">warn</option>
+            <option value="error">error</option>
+          </select>
+          <small>Override log level for production</small>
+        </div>
+        <div class="field">
+          <label for="environments.production.environment">Environment Name (override)</label>
+          <input type="text" id="environments.production.environment" name="environments.production.environment">
+          <small>Override environment name for production</small>
+        </div>
+        <div class="field">
+          <label for="environments.production.nodeEnv">Node Environment (override)</label>
+          <select id="environments.production.nodeEnv" name="environments.production.nodeEnv">
+            <option value="">Use default</option>
+            <option value="development">development</option>
+            <option value="production">production</option>
+          </select>
+          <small>Override Node.js environment for production</small>
+        </div>
+      </div>
+    </div>
+    
+    <div class="actions">
+      <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="saveBtn">Save Configuration</button>
+    </div>
+  </div>
+  
+  <script>
+    let configData = {};
+    let originalConfig = {};
+    let hasUnsavedChanges = false;
+    let targetFile = 'config.yaml';
+    
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const tabName = tab.dataset.tab;
+        
+        // Update active tab
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
+        // Update active content
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById(tabName).classList.add('active');
+      });
+    });
+    
+    // Load config
+    async function loadConfig() {
+      try {
+        const response = await fetch('/api/config');
+        const data = await response.json();
+        
+        if (data.error) {
+          showMessage(data.error, 'error');
+          return;
+        }
+        
+        configData = data.config;
+        originalConfig = JSON.parse(JSON.stringify(data.config));
+        targetFile = data.targetFile || 'config.yaml';
+        
+        // Update file info
+        document.getElementById('fileInfo').textContent = `Editing: ${targetFile}`;
+        
+        // Show file selector if local config exists
+        if (data.hasLocal) {
+          document.getElementById('fileSelector').style.display = 'block';
+          if (data.editingLocal) {
+            document.querySelector('input[value="config.local.yaml"]').checked = true;
+            targetFile = 'config.local.yaml';
+          }
+        }
+        
+        // Populate form
+        populateForm(configData);
+      } catch (e) {
+        showMessage('Failed to load configuration: ' + e.message, 'error');
+      }
+    }
+    
+    // Populate form from config
+    function populateForm(config) {
+      // Helper to set nested value
+      function setNestedValue(path, value) {
+        const input = document.querySelector(`[name="${path}"]`);
+        if (input) {
+          if (input.type === 'number') {
+            input.value = value !== undefined && value !== null ? value : '';
+          } else {
+            input.value = value !== undefined && value !== null ? value : '';
+          }
+        }
+      }
+      
+      // Defaults
+      if (config.defaults) {
+        if (config.defaults.database) {
+          setNestedValue('defaults.database.host', config.defaults.database.host);
+          setNestedValue('defaults.database.port', config.defaults.database.port);
+          setNestedValue('defaults.database.name', config.defaults.database.name);
+          setNestedValue('defaults.database.user', config.defaults.database.user);
+          setNestedValue('defaults.database.password', config.defaults.database.password);
+          setNestedValue('defaults.database.poolSize', config.defaults.database.poolSize);
+        }
+        if (config.defaults.api) {
+          setNestedValue('defaults.api.host', config.defaults.api.host);
+          setNestedValue('defaults.api.port', config.defaults.api.port);
+          setNestedValue('defaults.api.debugPort', config.defaults.api.debugPort);
+          setNestedValue('defaults.api.logLevel', config.defaults.api.logLevel);
+        }
+        if (config.defaults.frontend) {
+          setNestedValue('defaults.frontend.host', config.defaults.frontend.host);
+          setNestedValue('defaults.frontend.port', config.defaults.frontend.port);
+          setNestedValue('defaults.frontend.apiUrl', config.defaults.frontend.apiUrl);
+        }
+        if (config.defaults.redis) {
+          setNestedValue('defaults.redis.host', config.defaults.redis.host);
+          setNestedValue('defaults.redis.port', config.defaults.redis.port);
+        }
+        setNestedValue('defaults.environment', config.defaults.environment);
+        setNestedValue('defaults.nodeEnv', config.defaults.nodeEnv);
+      }
+      
+      // Environments
+      if (config.environments) {
+        if (config.environments.development) {
+          if (config.environments.development.database) {
+            setNestedValue('environments.development.database.name', config.environments.development.database.name);
+            setNestedValue('environments.development.database.password', config.environments.development.database.password);
+          }
+          if (config.environments.development.api) {
+            setNestedValue('environments.development.api.logLevel', config.environments.development.api.logLevel);
+          }
+        }
+        if (config.environments.production) {
+          if (config.environments.production.database) {
+            setNestedValue('environments.production.database.name', config.environments.production.database.name);
+            setNestedValue('environments.production.database.password', config.environments.production.database.password);
+          }
+          if (config.environments.production.api) {
+            setNestedValue('environments.production.api.logLevel', config.environments.production.api.logLevel);
+          }
+          setNestedValue('environments.production.environment', config.environments.production.environment);
+          setNestedValue('environments.production.nodeEnv', config.environments.production.nodeEnv);
+        }
+      }
+      
+      // Track changes
+      document.querySelectorAll('input, select').forEach(input => {
+        input.addEventListener('change', () => {
+          hasUnsavedChanges = true;
+        });
+      });
+    }
+    
+    // Collect form data
+    function collectFormData() {
+      const formData = {
+        defaults: {
+          database: {},
+          api: {},
+          frontend: {},
+          redis: {}
+        },
+        environments: {
+          development: {},
+          production: {}
+        }
+      };
+      
+      // Helper to get nested value
+      function getNestedValue(path) {
+        const input = document.querySelector(`[name="${path}"]`);
+        if (!input) return undefined;
+        if (input.type === 'number') {
+          const val = input.value;
+          return val === '' ? undefined : parseInt(val, 10);
+        }
+        if (input.type === 'select-one') {
+          const val = input.value;
+          return val === '' ? undefined : val;
+        }
+        return input.value === '' ? undefined : input.value;
+      }
+      
+      // Defaults
+      const dbName = getNestedValue('defaults.database.name');
+      if (dbName !== undefined) formData.defaults.database.name = dbName;
+      const dbHost = getNestedValue('defaults.database.host');
+      if (dbHost !== undefined) formData.defaults.database.host = dbHost;
+      const dbPort = getNestedValue('defaults.database.port');
+      if (dbPort !== undefined) formData.defaults.database.port = dbPort;
+      const dbUser = getNestedValue('defaults.database.user');
+      if (dbUser !== undefined) formData.defaults.database.user = dbUser;
+      const dbPassword = getNestedValue('defaults.database.password');
+      if (dbPassword !== undefined) formData.defaults.database.password = dbPassword;
+      const dbPoolSize = getNestedValue('defaults.database.poolSize');
+      if (dbPoolSize !== undefined) formData.defaults.database.poolSize = dbPoolSize;
+      
+      const apiHost = getNestedValue('defaults.api.host');
+      if (apiHost !== undefined) formData.defaults.api.host = apiHost;
+      const apiPort = getNestedValue('defaults.api.port');
+      if (apiPort !== undefined) formData.defaults.api.port = apiPort;
+      const apiDebugPort = getNestedValue('defaults.api.debugPort');
+      if (apiDebugPort !== undefined) formData.defaults.api.debugPort = apiDebugPort;
+      const apiLogLevel = getNestedValue('defaults.api.logLevel');
+      if (apiLogLevel !== undefined) formData.defaults.api.logLevel = apiLogLevel;
+      
+      const frontendHost = getNestedValue('defaults.frontend.host');
+      if (frontendHost !== undefined) formData.defaults.frontend.host = frontendHost;
+      const frontendPort = getNestedValue('defaults.frontend.port');
+      if (frontendPort !== undefined) formData.defaults.frontend.port = frontendPort;
+      const frontendApiUrl = getNestedValue('defaults.frontend.apiUrl');
+      if (frontendApiUrl !== undefined) formData.defaults.frontend.apiUrl = frontendApiUrl;
+      
+      const redisHost = getNestedValue('defaults.redis.host');
+      if (redisHost !== undefined) formData.defaults.redis.host = redisHost;
+      const redisPort = getNestedValue('defaults.redis.port');
+      if (redisPort !== undefined) formData.defaults.redis.port = redisPort;
+      
+      const environment = getNestedValue('defaults.environment');
+      if (environment !== undefined) formData.defaults.environment = environment;
+      const nodeEnv = getNestedValue('defaults.nodeEnv');
+      if (nodeEnv !== undefined) formData.defaults.nodeEnv = nodeEnv;
+      
+      // Environments - only include if they have values
+      const devDbName = getNestedValue('environments.development.database.name');
+      const devDbPassword = getNestedValue('environments.development.database.password');
+      const devApiLogLevel = getNestedValue('environments.development.api.logLevel');
+      if (devDbName !== undefined || devDbPassword !== undefined || devApiLogLevel !== undefined) {
+        formData.environments.development = {};
+        if (devDbName !== undefined || devDbPassword !== undefined) {
+          formData.environments.development.database = {};
+          if (devDbName !== undefined) formData.environments.development.database.name = devDbName;
+          if (devDbPassword !== undefined) formData.environments.development.database.password = devDbPassword;
+        }
+        if (devApiLogLevel !== undefined) {
+          formData.environments.development.api = { logLevel: devApiLogLevel };
+        }
+      }
+      
+      const prodDbName = getNestedValue('environments.production.database.name');
+      const prodDbPassword = getNestedValue('environments.production.database.password');
+      const prodApiLogLevel = getNestedValue('environments.production.api.logLevel');
+      const prodEnvironment = getNestedValue('environments.production.environment');
+      const prodNodeEnv = getNestedValue('environments.production.nodeEnv');
+      if (prodDbName !== undefined || prodDbPassword !== undefined || prodApiLogLevel !== undefined || 
+          prodEnvironment !== undefined || prodNodeEnv !== undefined) {
+        formData.environments.production = {};
+        if (prodDbName !== undefined || prodDbPassword !== undefined) {
+          formData.environments.production.database = {};
+          if (prodDbName !== undefined) formData.environments.production.database.name = prodDbName;
+          if (prodDbPassword !== undefined) formData.environments.production.database.password = prodDbPassword;
+        }
+        if (prodApiLogLevel !== undefined) {
+          formData.environments.production.api = { logLevel: prodApiLogLevel };
+        }
+        if (prodEnvironment !== undefined) formData.environments.production.environment = prodEnvironment;
+        if (prodNodeEnv !== undefined) formData.environments.production.nodeEnv = prodNodeEnv;
+      }
+      
+      return formData;
+    }
+    
+    // Save config
+    async function saveConfig() {
+      const saveBtn = document.getElementById('saveBtn');
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+      
+      try {
+        const formData = collectFormData();
+        
+        // Get target file
+        const fileRadio = document.querySelector('input[name="targetFile"]:checked');
+        if (fileRadio) {
+          targetFile = fileRadio.value;
+        }
+        
+        const response = await fetch('/api/config', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            config: formData,
+            targetFile: targetFile
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.error) {
+          showMessage(data.error, 'error');
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Configuration';
+          return;
+        }
+        
+        // Show success modal
+        showSuccessModal();
+        hasUnsavedChanges = false;
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saved';
+        
+        // Disable all inputs
+        document.querySelectorAll('input, select').forEach(input => {
+          input.disabled = true;
+        });
+        
+      } catch (e) {
+        showMessage('Failed to save: ' + e.message, 'error');
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Configuration';
+      }
+    }
+    
+    // Show message (for errors)
+    function showMessage(message, type) {
+      const msgEl = document.getElementById('message');
+      msgEl.textContent = message;
+      msgEl.className = `message ${type}`;
+    }
+    
+    // Show success modal
+    function showSuccessModal() {
+      const modal = document.getElementById('successModal');
+      modal.classList.add('active');
+    }
+    
+    // Cancel button
+    document.getElementById('cancelBtn').addEventListener('click', () => {
+      if (hasUnsavedChanges) {
+        if (confirm('You have unsaved changes. Are you sure you want to close?')) {
+          window.close();
+        }
+      } else {
+        window.close();
+      }
+    });
+    
+    // Save button
+    document.getElementById('saveBtn').addEventListener('click', saveConfig);
+    
+    // File selector change
+    document.querySelectorAll('input[name="targetFile"]').forEach(radio => {
+      radio.addEventListener('change', async () => {
+        targetFile = radio.value;
+        await loadConfig();
+      });
+    });
+    
+    // Before unload warning
+    window.addEventListener('beforeunload', (e) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+    
+    // Load on startup
+    loadConfig();
+  </script>
+</body>
+</html>
+

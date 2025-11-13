@@ -78,22 +78,22 @@ export function Projects() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white pb-20">
-      <div className="container mx-auto p-4">
+    <div className="container mx-auto p-4">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">All Properties</h1>
-          <button
-            onClick={() => setIsModalOpen(true)}
+        <button
+          onClick={() => setIsModalOpen(true)}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
+        >
             Add Property
-          </button>
-        </div>
+        </button>
+      </div>
 
         {properties.length === 0 ? (
           <div className="text-center p-8 text-gray-400">
             No properties yet. Add one to begin.
-          </div>
-        ) : (
+        </div>
+      ) : (
           propertiesByCategory.map(({ category, properties }) => (
             properties.length > 0 && (
               <div key={category.id} className="mb-8">
@@ -102,7 +102,7 @@ export function Projects() {
                   {properties.map(property => {
                     const location = getLocation(property);
                     return (
-                      <Link 
+                  <Link 
                         key={property.id}
                         to={`/projects/${property.id}`}
                         className="bg-gray-800 rounded-lg overflow-hidden hover:bg-gray-750 transition-colors"
@@ -136,86 +136,86 @@ export function Projects() {
                             </div>
                           </div>
                         </div>
-                      </Link>
+                  </Link>
                     );
                   })}
-                </div>
               </div>
-            )
-          ))
-        )}
+            </div>
+          )
+        ))
+      )}
 
-        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-          <form onSubmit={handleSubmit}>
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+        <form onSubmit={handleSubmit}>
             <ModalHeader>Add New Property</ModalHeader>
-            <ModalBody>
-              {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
-              <div className="space-y-4">
-                <div>
+          <ModalBody>
+            {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
+            <div className="space-y-4">
+              <div>
                   <label className="block text-sm font-medium mb-1 text-gray-700">Property Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                  />
-                </div>
-                <div>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                />
+              </div>
+              <div>
                   <label className="block text-sm font-medium mb-1 text-gray-700">Description</label>
-                  <textarea
-                    value={formData.description}
-                    onChange={e => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    rows={3}
-                  />
-                </div>
-                <div>
+                <textarea
+                  value={formData.description}
+                  onChange={e => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  rows={3}
+                />
+              </div>
+              <div>
                   <label className="block text-sm font-medium mb-1 text-gray-700">Category</label>
-                  <select
-                    required
-                    value={formData.team_id}
-                    onChange={e => setFormData({ ...formData, team_id: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                  >
+                <select
+                  required
+                  value={formData.team_id}
+                  onChange={e => setFormData({ ...formData, team_id: e.target.value })}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                >
                     <option value="">Select a category</option>
                     {categories.map(category => (
                       <option key={category.id} value={category.id}>{category.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700">Status</label>
-                  <select
-                    value={formData.status}
-                    onChange={e => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                  >
-                    <option value="planning">Planning</option>
-                    <option value="active">Active</option>
-                    <option value="completed">Completed</option>
-                  </select>
-                </div>
+                  ))}
+                </select>
               </div>
-            </ModalBody>
-            <ModalFooter>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={submitting}
+              <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-700">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={e => setFormData({ ...formData, status: e.target.value })}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                >
+                  <option value="planning">Planning</option>
+                  <option value="active">Active</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-              >
+            >
                 {submitting ? 'Adding...' : 'Add Property'}
-              </button>
-            </ModalFooter>
-          </form>
-        </Modal>
+            </button>
+          </ModalFooter>
+        </form>
+      </Modal>
       </div>
     </div>
   );

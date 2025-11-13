@@ -61,10 +61,12 @@ wait_for_pod() {
     fi
     
     if [ "$POD_STATUS" = "Running" ]; then
-      if [ "$POD_READY" = "true" ]; then
+        if [ "$POD_READY" = "true" ]; then
+        # Show 100% progress before success message
+        show_progress $MAX_ATTEMPTS $MAX_ATTEMPTS "$SERVICE_NAME"
         printf "\r  ✅ $SERVICE_NAME is ready (${ELAPSED}s)\n"
-        return 0
-      else
+          return 0
+        else
         # Health check in progress
         if [ "$SERVICE" = "postgres" ] || [ "$SERVICE" = "redis" ]; then
           # Database services initializing
@@ -77,12 +79,22 @@ wait_for_pod() {
     elif [ "$POD_STATUS" = "CrashLoopBackOff" ] || [ "$POD_STATUS" = "Error" ]; then
       printf "\r  ❌ $SERVICE_NAME failed to start\n"
       echo ""
-      echo "  Error Details:"
+      echo "  🔍 Running automatic diagnostics..."
       echo "  ──────────────────────────────────────"
+      echo ""
+      echo "  Pod Status:"
+      kubectl get pods -n $NAMESPACE -l app=$SERVICE 2>/dev/null | sed 's/^/  /' || echo "  Unable to retrieve pod status"
+      echo ""
+      echo "  Recent Events:"
+      kubectl describe pod -n $NAMESPACE -l app=$SERVICE 2>/dev/null | grep -A 10 "Events:" | head -15 | sed 's/^/  /' || echo "  Unable to retrieve events"
+      echo ""
+      echo "  Recent Logs:"
       kubectl logs -n $NAMESPACE -l app=$SERVICE --tail=10 2>/dev/null | sed 's/^/  /' || echo "  Unable to retrieve logs"
       echo ""
-      echo "  💡 Tip: Check the logs above for error messages"
-      echo "  💡 Run 'make logs-$SERVICE' for more details"
+      echo "  💡 Next steps:"
+      echo "     • View full logs: make logs-$SERVICE"
+      echo "     • Check all services: make status"
+      echo "     • Restart environment: make restart"
       return 1
     elif [ "$POD_STATUS" = "Pending" ]; then
       # Only show details on first attempt or every 20 attempts
@@ -97,14 +109,22 @@ wait_for_pod() {
   
   printf "\r  ❌ $SERVICE_NAME failed to start (timeout after $((MAX_ATTEMPTS * INTERVAL))s)\n"
   echo ""
-  echo "  Error Details:"
+  echo "  🔍 Running automatic diagnostics..."
   echo "  ──────────────────────────────────────"
+  echo ""
+  echo "  Pod Status:"
+  kubectl get pods -n $NAMESPACE -l app=$SERVICE 2>/dev/null | sed 's/^/  /' || echo "  Unable to retrieve pod status"
+  echo ""
+  echo "  Recent Events:"
+  kubectl describe pod -n $NAMESPACE -l app=$SERVICE 2>/dev/null | grep -A 10 "Events:" | head -15 | sed 's/^/  /' || echo "  Unable to retrieve events"
+  echo ""
+  echo "  Recent Logs:"
   kubectl logs -n $NAMESPACE -l app=$SERVICE --tail=15 2>/dev/null | sed 's/^/  /' || echo "  Unable to retrieve logs"
   echo ""
-  echo "  💡 Troubleshooting:"
-  echo "     • Check if all dependencies are running: make status"
-  echo "     • View detailed logs: make logs-$SERVICE"
-  echo "     • Restart the service: make restart"
+  echo "  💡 Next steps:"
+  echo "     • View full logs: make logs-$SERVICE"
+  echo "     • Check all services: make status"
+  echo "     • Restart environment: make restart"
   return 1
 }
 

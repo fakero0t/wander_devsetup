@@ -1,13 +1,6 @@
 # Wander
 
-A configurable mock application demonstrating a full-stack project management system. Built with React, Node.js, PostgreSQL, and Kubernetes. Use it as a starting point for learning or as a template for your own projects.
-
-## Who is this for?
-
-**Developers** learning modern web development with React, Node.js, and Kubernetes
-**DevOps engineers** wanting a complete example of containerized microservices
-**Students** studying full-stack development and cloud-native architecture
-**Anyone** looking for a configurable mock application to customize and build upon
+A configurable mock application demonstrating a full-stack project management system. Built with React, Node.js, PostgreSQL, and Kubernetes.
 
 ## Setup
 
@@ -29,7 +22,7 @@ make dev
 
 This single command handles everything: builds Docker images, starts databases, launches services, and sets up port forwarding.
 
-**First time setup:** Install prerequisites (see below), start Minikube (`minikube start --memory=4096 --cpus=2`), run `npm install`, then `make dev`.
+**First time setup:** Start Minikube (`minikube start --memory=4096 --cpus=2`) and run `npm install`, then `make dev`.
 
 ### Access the Application
 
@@ -51,20 +44,15 @@ make status       # Check service status
 
 ### Troubleshooting
 
-**Port already in use?**
-```bash
-make teardown
-make dev
-```
+The setup script automatically handles common issues:
+- **Port conflicts** - Automatically finds and uses available ports
+- **Service failures** - Automatically shows diagnostics when services fail to start
 
-**Services not starting?**
+**Need more help?**
 ```bash
-make logs          # Check what's happening
-make status        # See pod status
-```
-
-**Need help?**
-```bash
+make logs          # View all service logs
+make status        # Check service status
+make restart       # Restart everything
 make help          # See all available commands
 ```
 

@@ -211,8 +211,8 @@ export function Dashboard() {
               <div key={idx} className="bg-gray-900 p-6 rounded-lg">
                 <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
                 <p className="text-gray-300 leading-relaxed">{feature.description}</p>
-              </div>
-            ))}
+          </div>
+        ))}
           </div>
         </div>
       </div>
