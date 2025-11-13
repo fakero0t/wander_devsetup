@@ -18,29 +18,11 @@ export SEED_SQL_CONTENT=$(cat db/init/seed.sql | sed 's/^/    /')
 
 # Generate conditional blocks based on environment
 if [ "$NODE_ENV" = "development" ]; then
-  # Development: include volume mounts and dev commands
-  export DEV_API_VOLUME=$(cat <<EOF
-        volumeMounts:
-        - name: api-src
-          mountPath: /app/src
-      volumes:
-      - name: api-src
-        hostPath:
-          path: ${WORKSPACE_PATH}/services/api/src
-          type: Directory
-EOF
-)
-  export DEV_VOLUME_MOUNT=$(cat <<EOF
-        volumeMounts:
-        - name: frontend-src
-          mountPath: /app/src
-      volumes:
-      - name: frontend-src
-        hostPath:
-          path: ${WORKSPACE_PATH}/services/frontend/src
-          type: Directory
-EOF
-)
+  # Development: use dev commands
+  # Note: hostPath volumes removed - they don't work in Minikube/Docker Desktop VMs
+  # Hot-reloading requires rebuilding images or using alternative methods
+  export DEV_API_VOLUME=""
+  export DEV_VOLUME_MOUNT=""
   export API_COMMAND='["npm", "run", "dev"]'
   export DEV_COMMAND='["npm", "run", "dev"]'
 else

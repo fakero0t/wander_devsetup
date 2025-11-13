@@ -13,6 +13,12 @@ API_PORT ?= 4000
 POSTGRES_PORT ?= 5432
 REDIS_PORT ?= 6379
 
+# Detect environment and set Dockerfile suffix
+# Default to development if NODE_ENV is not set
+NODE_ENV ?= development
+# Use .dev suffix for development, empty for production
+DOCKERFILE_SUFFIX := $(if $(filter production,$(NODE_ENV)),,.dev)
+
 help: ## Display this help message
 	@echo "Wander Developer Environment - Available Commands:"
 	@echo ""
@@ -48,13 +54,13 @@ dev: install-prereqs validate ## Start the entire development environment
 	@echo "🔨 Step 5: Building Docker images..."
 	@echo "========================================"
 	@echo ""
-	@echo "Building wander-api:latest..."
+	@echo "Building wander-api:latest (using Dockerfile$(DOCKERFILE_SUFFIX))..."
 	@echo "----------------------------------------"
-	@(if minikube status 2>/dev/null | grep -q Running; then eval $$(minikube docker-env); fi; docker build --progress=plain -t wander-api:latest -f services/api/Dockerfile .)
+	@(if minikube status 2>/dev/null | grep -q Running; then eval $$(minikube docker-env); fi; docker build --progress=plain -t wander-api:latest -f services/api/Dockerfile$(DOCKERFILE_SUFFIX) .)
 	@echo ""
-	@echo "Building wander-frontend:latest..."
+	@echo "Building wander-frontend:latest (using Dockerfile$(DOCKERFILE_SUFFIX))..."
 	@echo "----------------------------------------"
-	@(if minikube status 2>/dev/null | grep -q Running; then eval $$(minikube docker-env); fi; docker build --progress=plain -t wander-frontend:latest -f services/frontend/Dockerfile .)
+	@(if minikube status 2>/dev/null | grep -q Running; then eval $$(minikube docker-env); fi; docker build --progress=plain -t wander-frontend:latest -f services/frontend/Dockerfile$(DOCKERFILE_SUFFIX) .)
 	@echo ""
 	@echo "🎯 Step 6: Applying Kubernetes manifests..."
 	@echo "========================================"
@@ -67,6 +73,9 @@ dev: install-prereqs validate ## Start the entire development environment
 	@echo ""
 	@echo "Applying seed-configmap.yaml..."
 	kubectl apply -f infra/generated/seed-configmap.yaml -v=5
+	@echo "Verifying ConfigMap was created..."
+	@kubectl get configmap wander-seed-script -n $(NAMESPACE) || (echo "❌ ERROR: ConfigMap wander-seed-script not found!" && exit 1)
+	@echo "✓ ConfigMap verified"
 	@echo ""
 	@echo "Applying postgres.yaml..."
 	kubectl apply -f infra/generated/postgres.yaml -v=5
@@ -138,9 +147,9 @@ teardown: ## Stop and clean up the entire environment
 restart: teardown dev ## Restart the environment (teardown + dev)
 
 build: ## Build Docker images only
-	@echo "🔨 Building Docker images..."
-	@(if minikube status 2>/dev/null | grep -q Running; then eval $$(minikube docker-env); fi; docker build -t wander-api:latest -f services/api/Dockerfile .)
-	@(if minikube status 2>/dev/null | grep -q Running; then eval $$(minikube docker-env); fi; docker build -t wander-frontend:latest -f services/frontend/Dockerfile .)
+	@echo "🔨 Building Docker images (NODE_ENV=$(NODE_ENV), using Dockerfile$(DOCKERFILE_SUFFIX))..."
+	@(if minikube status 2>/dev/null | grep -q Running; then eval $$(minikube docker-env); fi; docker build -t wander-api:latest -f services/api/Dockerfile$(DOCKERFILE_SUFFIX) .)
+	@(if minikube status 2>/dev/null | grep -q Running; then eval $$(minikube docker-env); fi; docker build -t wander-frontend:latest -f services/frontend/Dockerfile$(DOCKERFILE_SUFFIX) .)
 	@echo "✅ Images built successfully"
 
 logs: ## Stream logs from all pods

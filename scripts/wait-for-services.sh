@@ -34,19 +34,25 @@ wait_for_pod() {
           echo "    ⏳ $SERVICE: Running but not ready yet (still initializing)..."
         fi
       else
-        # For API and frontend, check health endpoint
-        echo "    🔍 $SERVICE: Checking health endpoint..."
-        if kubectl exec -n $NAMESPACE deployment/$SERVICE -- curl -f http://localhost:${PORT}/health 2>/dev/null >&2; then
+        # For API and frontend, check Ready status (Kubernetes readiness probes handle health checks)
+        if [ "$POD_READY" = "true" ]; then
           echo "  ✅ $SERVICE: ready (took ${ELAPSED}s)"
           return 0
         else
-          echo "    ⏳ $SERVICE: Health check failed, retrying..."
+          echo "    ⏳ $SERVICE: Running but not ready yet (readiness probe checking)..."
         fi
       fi
     elif [ "$POD_STATUS" = "NotFound" ]; then
       echo "    ⏳ $SERVICE: Pod not found yet, waiting..."
     elif [ "$POD_STATUS" = "Pending" ]; then
-      echo "    ⏳ $SERVICE: Pod is pending (scheduling/starting)..."
+      # Show detailed error every 10 attempts or on first attempt
+      if [ $((ATTEMPTS % 10)) -eq 0 ] || [ $ATTEMPTS -eq 0 ]; then
+        echo "    ⏳ $SERVICE: Pod is pending (scheduling/starting)..."
+        echo "    🔍 Checking pod events for details:"
+        kubectl describe pod -n $NAMESPACE -l app=$SERVICE 2>/dev/null | grep -A 10 "Events:" | head -15 || true
+      else
+        echo "    ⏳ $SERVICE: Pod is pending (scheduling/starting)..."
+      fi
     elif [ "$POD_STATUS" = "CrashLoopBackOff" ] || [ "$POD_STATUS" = "Error" ]; then
       echo "    ❌ $SERVICE: Pod in error state: $POD_STATUS"
       kubectl logs -n $NAMESPACE -l app=$SERVICE --tail=20

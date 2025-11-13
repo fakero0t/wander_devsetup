@@ -1,0 +1,30 @@
+# Development Dockerfile for Frontend
+# Single-stage build with source code and dev dependencies
+FROM node:20-alpine
+
+WORKDIR /workspace
+
+# Copy workspace configuration
+COPY package*.json tsconfig.base.json ./
+
+# Copy shared package (source, not built)
+COPY packages/shared ./packages/shared
+
+# Copy frontend service (source)
+COPY services/frontend ./services/frontend
+
+# Install all dependencies including dev dependencies
+RUN npm install --workspaces --no-audit --no-fund
+
+# Build shared package (needed for frontend to work)
+RUN npm run build --workspace=@wander/shared
+
+# Set working directory to frontend service
+WORKDIR /workspace/services/frontend
+
+# Expose port
+EXPOSE 3000
+
+# Development command (vite for hot-reload)
+CMD ["npm", "run", "dev"]
+

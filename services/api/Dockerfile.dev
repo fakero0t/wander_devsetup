@@ -1,0 +1,33 @@
+# Development Dockerfile for API
+# Single-stage build with source code and dev dependencies
+FROM node:20-alpine
+
+WORKDIR /workspace
+
+# Install build dependencies for native modules
+RUN apk add --no-cache --virtual .gyp python3 make g++
+
+# Copy workspace configuration
+COPY package*.json tsconfig.base.json ./
+
+# Copy shared package (source, not built)
+COPY packages/shared ./packages/shared
+
+# Copy API service (source)
+COPY services/api ./services/api
+
+# Install all dependencies including dev dependencies
+RUN npm install --workspaces --no-audit --no-fund
+
+# Build shared package (needed for API to work)
+RUN npm run build --workspace=packages/shared
+
+# Set working directory to API service
+WORKDIR /workspace/services/api
+
+# Expose ports
+EXPOSE 4000 9229
+
+# Development command (tsx watch for hot-reload)
+CMD ["npm", "run", "dev"]
+
