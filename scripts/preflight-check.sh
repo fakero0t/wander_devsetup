@@ -90,11 +90,11 @@ update_env_port() {
   local new_port=$2
   local env_file=".env"
   
-  # Ensure .env exists
+  # Ensure .env exists (generate from config.yaml if needed)
   if [ ! -f "$env_file" ]; then
-    if [ -f ".env.example" ]; then
-      cp .env.example "$env_file"
-      echo "ℹ️  Created .env from .env.example"
+    if [ -f "config.yaml" ]; then
+      node scripts/load-config.js --format env
+      echo "ℹ️  Generated .env from config.yaml"
     else
       touch "$env_file"
     fi

@@ -1,0 +1,43 @@
+# Wander Application Configuration
+# Environment-specific overrides are merged with defaults
+
+defaults:
+  database:
+    host: postgres
+    port: 5432
+    name: wander_dev
+    user: postgres
+    password: dev_password
+    poolSize: 10
+  
+  api:
+    host: 0.0.0.0
+    port: 4000
+    debugPort: 9229
+    logLevel: debug
+  
+  frontend:
+    host: 0.0.0.0
+    port: 3000
+    apiUrl: http://localhost:4000
+  
+  redis:
+    host: redis
+    port: 6379
+  
+  environment: development
+  nodeEnv: development
+
+environments:
+  development:
+    # Development uses defaults, no overrides needed
+  
+  production:
+    database:
+      name: wander_prod
+      password: ${DATABASE_PASSWORD}  # Must be set in environment
+    api:
+      logLevel: info
+    environment: production
+    nodeEnv: production
+

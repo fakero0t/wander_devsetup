@@ -1,6 +1,10 @@
 # Environment variables
 .env
 
+# Config files
+config.local.yaml
+.config.env
+
 # Process IDs
 .pids/
 

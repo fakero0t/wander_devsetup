@@ -11,7 +11,9 @@
   "scripts": {
     "dev": "npm run dev --workspaces",
     "build": "npm run build --workspaces",
-    "test": "jest --runInBand --coverage"
+    "test": "jest --runInBand --coverage",
+    "config:load": "node scripts/load-config.js",
+    "config:validate": "node scripts/load-config.js --validate-only"
   },
   "devDependencies": {
     "@types/jest": "^29.5.0",
@@ -19,6 +21,7 @@
     "@typescript-eslint/parser": "^6.0.0",
     "eslint": "^8.0.0",
     "jest": "^29.7.0",
+    "js-yaml": "^4.1.0",
     "ts-jest": "^29.1.0",
     "typescript": "^5.0.0"
   }

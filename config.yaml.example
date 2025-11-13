@@ -1,0 +1,51 @@
+# Wander Application Configuration Template
+# Copy this file to config.yaml and customize as needed
+# For local overrides, create config.local.yaml (gitignored)
+
+defaults:
+  # Database configuration
+  database:
+    host: postgres              # Database hostname (K8s service name or localhost)
+    port: 5432                  # Database port
+    name: wander_dev            # Database name
+    user: postgres              # Database user
+    password: dev_password      # Database password (use ${VAR} for secrets in production)
+    poolSize: 10                # Connection pool size
+  
+  # API service configuration
+  api:
+    host: 0.0.0.0              # API bind address
+    port: 4000                  # API port
+    debugPort: 9229             # Node.js debugger port
+    logLevel: debug             # Log level: debug, info, warn, error
+  
+  # Frontend service configuration
+  frontend:
+    host: 0.0.0.0              # Frontend bind address
+    port: 3000                  # Frontend port
+    apiUrl: http://localhost:4000  # API URL for frontend (use localhost for port-forward)
+  
+  # Redis configuration
+  redis:
+    host: redis                 # Redis hostname (K8s service name or localhost)
+    port: 6379                  # Redis port
+  
+  # General configuration
+  environment: development      # Environment name
+  nodeEnv: development          # Node.js environment
+
+environments:
+  # Development environment (uses defaults)
+  development:
+    # No overrides needed - uses defaults above
+  
+  # Production environment
+  production:
+    database:
+      name: wander_prod
+      password: ${DATABASE_PASSWORD}  # Must be set in environment
+    api:
+      logLevel: info
+    environment: production
+    nodeEnv: production
+

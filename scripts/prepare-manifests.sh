@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Load config and export variables
+eval $(node scripts/load-config.js --format shell-export)
+
 NODE_ENV=${NODE_ENV:-development}
 WORKSPACE_PATH=${WORKSPACE_PATH:-$(pwd)}
 
@@ -34,9 +37,10 @@ else
 fi
 
 # Process all YAML files
+# Include all config variables in envsubst
 for file in infra/k8s/*.yaml; do
   filename=$(basename "$file")
-  envsubst '$NODE_ENV $WORKSPACE_PATH $DEV_API_VOLUME $API_COMMAND $DEV_VOLUME_MOUNT $DEV_COMMAND $SEED_SQL_CONTENT' < "$file" > "infra/generated/$filename"
+  envsubst '$NODE_ENV $WORKSPACE_PATH $DEV_API_VOLUME $API_COMMAND $DEV_VOLUME_MOUNT $DEV_COMMAND $SEED_SQL_CONTENT $DATABASE_HOST $DATABASE_PORT $DATABASE_NAME $DATABASE_USER $DATABASE_PASSWORD $DATABASE_POOL_SIZE $API_HOST $API_PORT $API_DEBUG_PORT $API_LOG_LEVEL $FRONTEND_HOST $FRONTEND_PORT $VITE_API_URL $REDIS_HOST $REDIS_PORT $ENVIRONMENT' < "$file" > "infra/generated/$filename"
   echo "  ✅ Generated infra/generated/$filename"
 done
 

@@ -27,35 +27,42 @@ export function Teams() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="text-center p-8">Loading...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center pb-20">
+        <div>Loading...</div>
+      </div>
+    );
+  }
 
   if (teams.length === 0) {
     return (
-      <div className="text-center p-8 text-gray-500">
-        No teams yet.
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center pb-20">
+        <div className="text-center text-gray-400">
+          No categories yet.
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Teams</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {teams.map(team => (
-          <div key={team.id} className="bg-white p-4 rounded shadow">
-            <h2 className="text-xl font-semibold mb-2">{team.name}</h2>
-            <p className="text-gray-600 mb-2">{team.description}</p>
-            <p className="text-sm text-gray-500">
-              {team.memberCount} member{team.memberCount !== 1 ? 's' : ''}
-            </p>
-            <Link 
-              to={`/projects?team=${team.id}`}
-              className="text-primary hover:underline text-sm mt-2 inline-block"
-            >
-              View Projects →
-            </Link>
-          </div>
-        ))}
+    <div className="min-h-screen bg-gray-900 text-white pb-20">
+      <div className="container mx-auto p-4">
+        <h1 className="text-3xl font-bold mb-6">Categories</h1>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {teams.map(team => (
+            <div key={team.id} className="bg-gray-800 p-6 rounded-lg">
+              <h2 className="text-xl font-semibold mb-2">{team.name}</h2>
+              <p className="text-gray-300 mb-4">{team.description}</p>
+              <Link 
+                to={`/projects`}
+                className="text-blue-400 hover:text-blue-300 text-sm font-medium inline-block"
+              >
+                View Properties →
+              </Link>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

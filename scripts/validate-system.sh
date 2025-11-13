@@ -245,7 +245,7 @@ echo ""
 echo -e "${BLUE}=== Configuration Files Check ===${NC}"
 echo ""
 
-run_test ".env.example exists" "[ -f .env.example ]"
+run_test "config.yaml exists" "[ -f config.yaml ]"
 run_test "tsconfig.base.json exists" "[ -f tsconfig.base.json ]"
 run_test "eslintrc.json exists" "[ -f .eslintrc.json ]"
 run_test "jest.config.js exists" "[ -f jest.config.js ]"

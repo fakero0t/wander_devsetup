@@ -88,84 +88,97 @@ export function ProjectDetail() {
     }
   };
 
-  if (loading) return <div className="text-center p-8">Loading...</div>;
-  if (!project) return <div className="text-center p-8 text-red-500">Project not found</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center pb-20">
+        <div>Loading...</div>
+      </div>
+    );
+  }
+  if (!project) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center pb-20">
+        <div className="text-center text-red-400">Property not found</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="bg-white p-6 rounded shadow mb-6">
-        <h1 className="text-2xl font-bold mb-2">{project.name}</h1>
-        <p className="text-gray-600 mb-2">{project.description}</p>
-        <span className={`text-xs px-2 py-1 rounded ${
-          project.status === 'active' ? 'bg-green-100 text-green-800' :
-          project.status === 'planning' ? 'bg-yellow-100 text-yellow-800' :
-          'bg-gray-100 text-gray-800'
-        }`}>
-          {project.status}
-        </span>
-      </div>
-
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Tasks</h2>
-        <button
-          onClick={() => handleOpenModal()}
-          className="bg-primary text-white px-4 py-2 rounded hover:bg-blue-600"
-        >
-          New Task
-        </button>
-      </div>
-
-      {tasks.length === 0 ? (
-        <div className="text-center p-8 text-gray-500">
-          No tasks in this project.
+    <div className="min-h-screen bg-gray-900 text-white pb-20">
+      <div className="container mx-auto p-4">
+        <div className="bg-gray-800 p-6 rounded-lg mb-6">
+          <h1 className="text-3xl font-bold mb-2">{project.name}</h1>
+          <p className="text-gray-300 mb-4">{project.description}</p>
+          <span className={`text-xs px-2 py-1 rounded ${
+            project.status === 'active' ? 'bg-green-500 text-white' :
+            project.status === 'planning' ? 'bg-yellow-500 text-white' :
+            'bg-gray-600 text-white'
+          }`}>
+            {project.status}
+          </span>
         </div>
-      ) : (
-        <div className="space-y-3">
-          {tasks.map(task => {
-            const assignedUser = users.find(u => u.id === task.assigned_to);
-            return (
-              <div 
-                key={task.id} 
-                className="bg-white p-4 rounded shadow hover:shadow-md cursor-pointer"
-                onClick={() => handleOpenModal(task)}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-semibold">{task.title}</h3>
-                  <div className="flex gap-2">
-                    <span className={`text-xs px-2 py-1 rounded ${
-                      task.priority === 'high' ? 'bg-red-100 text-red-800' :
-                      task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-green-100 text-green-800'
-                    }`}>
-                      {task.priority}
-                    </span>
-                    <span className={`text-xs px-2 py-1 rounded ${
-                      task.status === 'done' ? 'bg-green-100 text-green-800' :
-                      task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {task.status.replace('_', ' ')}
-                    </span>
+
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Reviews</h2>
+          <button
+            onClick={() => handleOpenModal()}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Add Review
+          </button>
+        </div>
+
+        {tasks.length === 0 ? (
+          <div className="text-center p-8 text-gray-400">
+            No reviews for this property yet.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {tasks.map(task => {
+              const assignedUser = users.find(u => u.id === task.assigned_to);
+              return (
+                <div 
+                  key={task.id} 
+                  className="bg-gray-800 p-4 rounded-lg hover:bg-gray-750 cursor-pointer transition-colors"
+                  onClick={() => handleOpenModal(task)}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-semibold">{task.title}</h3>
+                    <div className="flex gap-2">
+                      <span className={`text-xs px-2 py-1 rounded ${
+                        task.priority === 'high' ? 'bg-yellow-500 text-white' :
+                        task.priority === 'medium' ? 'bg-blue-500 text-white' :
+                        'bg-green-500 text-white'
+                      }`}>
+                        {task.priority}
+                      </span>
+                      <span className={`text-xs px-2 py-1 rounded ${
+                        task.status === 'done' ? 'bg-green-500 text-white' :
+                        task.status === 'in_progress' ? 'bg-blue-500 text-white' :
+                        'bg-gray-600 text-white'
+                      }`}>
+                        {task.status.replace('_', ' ')}
+                      </span>
+                    </div>
                   </div>
+                  <p className="text-sm text-gray-300 mb-2">{task.description}</p>
+                  <p className="text-xs text-gray-400">
+                    {assignedUser ? `By: ${assignedUser.name}` : 'Anonymous'}
+                  </p>
                 </div>
-                <p className="text-sm text-gray-600 mb-2">{task.description}</p>
-                <p className="text-xs text-gray-500">
-                  {assignedUser ? `Assigned to: ${assignedUser.name}` : 'Unassigned'}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
         <form onSubmit={handleSubmit}>
-          <ModalHeader>{editingTask ? 'Edit Task' : 'Create New Task'}</ModalHeader>
+          <ModalHeader>{editingTask ? 'Edit Review' : 'Add Review'}</ModalHeader>
           <ModalBody>
             {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Task Title</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700">Review Title</label>
                 <input
                   type="text"
                   required
@@ -175,7 +188,7 @@ export function ProjectDetail() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Description</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700">Review</label>
                 <textarea
                   value={formData.description}
                   onChange={e => setFormData({ ...formData, description: e.target.value })}
@@ -184,20 +197,20 @@ export function ProjectDetail() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Assigned To</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700">Reviewer</label>
                 <select
                   value={formData.assigned_to}
                   onChange={e => setFormData({ ...formData, assigned_to: e.target.value })}
                   className="w-full border border-gray-300 rounded px-3 py-2"
                 >
-                  <option value="">Unassigned</option>
+                  <option value="">Anonymous</option>
                   {users.map(user => (
                     <option key={user.id} value={user.id}>{user.name}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Status</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700">Status</label>
                 <select
                   value={formData.status}
                   onChange={e => setFormData({ ...formData, status: e.target.value })}
@@ -209,7 +222,7 @@ export function ProjectDetail() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Priority</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700">Rating</label>
                 <select
                   value={formData.priority}
                   onChange={e => setFormData({ ...formData, priority: e.target.value })}
@@ -233,13 +246,14 @@ export function ProjectDetail() {
             <button
               type="submit"
               disabled={submitting}
-              className="px-4 py-2 bg-primary text-white rounded hover:bg-blue-600 disabled:opacity-50"
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
             >
               {submitting ? 'Saving...' : editingTask ? 'Update' : 'Create'}
             </button>
           </ModalFooter>
         </form>
-      </Modal>
+        </Modal>
+      </div>
     </div>
   );
 }

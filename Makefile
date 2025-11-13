@@ -1,7 +1,7 @@
 .PHONY: help install-prereqs dev teardown restart build logs logs-api logs-frontend logs-postgres logs-redis status seed-db test shell-api db-shell clean validate
 
-# Include .env file if it exists
--include .env
+# Load config and export variables
+-include .config.env
 export
 
 NAMESPACE := wander-dev
@@ -36,9 +36,10 @@ dev: install-prereqs validate ## Start the entire development environment
 	@echo "----------------------------------------"
 	./scripts/preflight-check.sh
 	@echo ""
-	@echo "📋 Step 2: Checking .env file..."
+	@echo "📋 Step 2: Loading configuration..."
 	@echo "----------------------------------------"
-	[ -f .env ] && echo "✓ .env file exists" || (echo "⚠ Creating .env from .env.example" && cp .env.example .env)
+	@node scripts/load-config.js || (echo "❌ Failed to load configuration. Please ensure config.yaml exists." && exit 1)
+	@echo "✓ Configuration loaded"
 	@echo ""
 	@echo "📋 Step 3: Creating required directories..."
 	@echo "----------------------------------------"

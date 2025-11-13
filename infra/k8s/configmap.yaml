@@ -1,25 +1,26 @@
 # ConfigMap for Wander application environment variables
-# This file uses envsubst for variable substitution (${NODE_ENV})
+# Variables are populated from config.yaml via prepare-manifests.sh
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: wander-config
   namespace: wander-dev
 data:
-  DATABASE_HOST: postgres
-  DATABASE_PORT: "5432"
-  DATABASE_NAME: wander_dev
-  DATABASE_USER: postgres
-  DATABASE_POOL_SIZE: "10"
-  API_HOST: 0.0.0.0
-  API_PORT: "4000"
-  API_DEBUG_PORT: "9229"
-  API_LOG_LEVEL: debug
+  DATABASE_HOST: ${DATABASE_HOST}
+  DATABASE_PORT: "${DATABASE_PORT}"
+  DATABASE_NAME: ${DATABASE_NAME}
+  DATABASE_USER: ${DATABASE_USER}
+  DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+  DATABASE_POOL_SIZE: "${DATABASE_POOL_SIZE}"
+  API_HOST: ${API_HOST}
+  API_PORT: "${API_PORT}"
+  API_DEBUG_PORT: "${API_DEBUG_PORT}"
+  API_LOG_LEVEL: ${API_LOG_LEVEL}
   NODE_ENV: ${NODE_ENV}
-  FRONTEND_HOST: 0.0.0.0
-  FRONTEND_PORT: "3000"
-  VITE_API_URL: http://localhost:4000
-  REDIS_HOST: redis
-  REDIS_PORT: "6379"
-  ENVIRONMENT: development
+  FRONTEND_HOST: ${FRONTEND_HOST}
+  FRONTEND_PORT: "${FRONTEND_PORT}"
+  VITE_API_URL: ${VITE_API_URL}
+  REDIS_HOST: ${REDIS_HOST}
+  REDIS_PORT: "${REDIS_PORT}"
+  ENVIRONMENT: ${ENVIRONMENT}
 

@@ -105,48 +105,49 @@ BEGIN
     ('David Lee', 'david@wander.com', NOW() - INTERVAL '4 days', NOW() - INTERVAL '4 days'),
     ('Emma Johnson', 'emma@wander.com', NOW() - INTERVAL '3 days', NOW() - INTERVAL '3 days');
 
-  -- Insert seed data: Teams
+  -- Insert seed data: Teams (Categories for vacation rentals)
   INSERT INTO teams (name, description, created_at, updated_at) VALUES
-    ('Frontend Squad', 'Building amazing user interfaces', NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days'),
-    ('Backend Brigade', 'Powering the backend infrastructure', NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days');
+    ('Ocean', 'Beachfront and coastal properties', NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days'),
+    ('Mountain', 'Mountain views and alpine retreats', NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days'),
+    ('Forest', 'Woodland cabins and nature escapes', NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days'),
+    ('Lake', 'Lakeside properties and waterfront homes', NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days'),
+    ('Desert', 'Desert landscapes and arid retreats', NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days'),
+    ('Skiing', 'Ski-in/ski-out properties and winter retreats', NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days'),
+    ('Hawaii', 'Tropical paradise properties', NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days'),
+    ('Urban', 'City center properties and urban escapes', NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days');
 
-  -- Insert seed data: Team Members
+  -- Insert seed data: Team Members (not used in vacation rental context, keeping minimal data)
   INSERT INTO team_members (team_id, user_id, joined_at) VALUES
-    (1, 1, NOW() - INTERVAL '7 days'),  -- Alice → Frontend Squad
-    (1, 5, NOW() - INTERVAL '3 days'),  -- Emma → Frontend Squad
-    (1, 3, NOW() - INTERVAL '5 days'),  -- Carol → Frontend Squad
-    (2, 2, NOW() - INTERVAL '6 days'),  -- Bob → Backend Brigade
-    (2, 4, NOW() - INTERVAL '4 days');  -- David → Backend Brigade
+    (1, 1, NOW() - INTERVAL '7 days'),
+    (2, 2, NOW() - INTERVAL '6 days');
 
-  -- Insert seed data: Projects
+  -- Insert seed data: Projects (Vacation Rental Properties)
   INSERT INTO projects (team_id, name, description, status, created_at, updated_at) VALUES
-    (1, 'Dashboard Redesign', 'Modernize the main dashboard UI with new design system', 'active', NOW() - INTERVAL '6 days', NOW() - INTERVAL '1 day'),
-    (2, 'API v2 Migration', 'Migrate from REST to GraphQL with improved performance', 'active', NOW() - INTERVAL '5 days', NOW() - INTERVAL '2 days');
+    (1, 'Wander Crystal Palms', 'Beachfront property with stunning ocean views and direct beach access', 'active', NOW() - INTERVAL '6 days', NOW() - INTERVAL '1 day'),
+    (2, 'Wander Wimberley Hills', 'Mountain retreat with panoramic hill country views and modern amenities', 'active', NOW() - INTERVAL '5 days', NOW() - INTERVAL '2 days'),
+    (3, 'Wander Concan River', 'Riverside property nestled in the forest with private river access', 'active', NOW() - INTERVAL '4 days', NOW() - INTERVAL '3 days'),
+    (1, 'Wander Port Aransas', 'Coastal home with private pool and steps to the beach', 'active', NOW() - INTERVAL '3 days', NOW() - INTERVAL '2 days'),
+    (4, 'Wander Lake Travis', 'Lakeside modern home with dock and water sports equipment', 'active', NOW() - INTERVAL '2 days', NOW() - INTERVAL '1 day'),
+    (5, 'Wander Marfa Desert', 'Desert modern home with stargazing deck and minimalist design', 'active', NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day');
 
-  -- Insert seed data: Tasks
+  -- Insert seed data: Tasks (Reviews/Bookings - keeping minimal for demo)
   INSERT INTO tasks (project_id, assigned_to, title, description, status, priority, created_at, updated_at) VALUES
-    (1, 1, 'Design new dashboard layout', 'Create wireframes and mockups for the new dashboard design', 'in_progress', 'high', NOW() - INTERVAL '6 days', NOW() - INTERVAL '1 day'),
-    (1, 5, 'Implement responsive grid system', 'Build a flexible grid system that works across all screen sizes', 'todo', 'medium', NOW() - INTERVAL '5 days', NOW() - INTERVAL '5 days'),
-    (1, NULL, 'Add dark mode support', 'Implement dark mode theme with user preferences', 'todo', 'low', NOW() - INTERVAL '4 days', NOW() - INTERVAL '4 days'),
-    (2, 2, 'Design GraphQL schema', 'Define the complete GraphQL schema for API v2', 'done', 'high', NOW() - INTERVAL '5 days', NOW() - INTERVAL '3 days'),
-    (2, 2, 'Implement resolvers', 'Build GraphQL resolvers for all queries and mutations', 'in_progress', 'high', NOW() - INTERVAL '4 days', NOW() - INTERVAL '1 day'),
-    (2, 4, 'Write migration scripts', 'Create scripts to migrate data from v1 to v2 API', 'todo', 'medium', NOW() - INTERVAL '3 days', NOW() - INTERVAL '3 days');
+    (1, 1, 'Guest Review', 'Amazing beachfront location with stunning sunsets', 'done', 'high', NOW() - INTERVAL '3 days', NOW() - INTERVAL '3 days'),
+    (2, 2, 'Guest Review', 'Perfect mountain retreat, highly recommend', 'done', 'high', NOW() - INTERVAL '2 days', NOW() - INTERVAL '2 days'),
+    (3, 3, 'Guest Review', 'Peaceful riverside escape, exactly as described', 'done', 'medium', NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day');
 
-  -- Insert seed data: Activities
+  -- Insert seed data: Activities (Booking activity log)
   INSERT INTO activities (user_id, action, entity_type, entity_id, description, created_at) VALUES
-    (1, 'created_task', 'task', 1, 'Alice Chen created task: Design new dashboard layout', NOW() - INTERVAL '6 days'),
-    (2, 'completed_task', 'task', 4, 'Bob Martinez completed task: Design GraphQL schema', NOW() - INTERVAL '3 days'),
-    (5, 'joined_team', 'team', 1, 'Emma Johnson joined team Frontend Squad', NOW() - INTERVAL '3 days'),
-    (1, 'updated_task', 'task', 1, 'Alice Chen started working on task: Design new dashboard layout', NOW() - INTERVAL '2 days'),
-    (3, 'joined_team', 'team', 1, 'Carol Singh joined team Frontend Squad', NOW() - INTERVAL '5 days'),
-    (4, 'joined_team', 'team', 2, 'David Lee joined team Backend Brigade', NOW() - INTERVAL '4 days'),
-    (2, 'created_project', 'project', 2, 'Bob Martinez created project: API v2 Migration', NOW() - INTERVAL '5 days'),
-    (2, 'started_task', 'task', 5, 'Bob Martinez started working on task: Implement resolvers', NOW() - INTERVAL '1 day'),
-    (5, 'created_task', 'task', 2, 'Emma Johnson created task: Implement responsive grid system', NOW() - INTERVAL '5 days'),
-    (1, 'created_project', 'project', 1, 'Alice Chen created project: Dashboard Redesign', NOW() - INTERVAL '6 days');
+    (1, 'booked', 'project', 1, 'Alice Chen booked Wander Crystal Palms', NOW() - INTERVAL '3 days'),
+    (2, 'booked', 'project', 2, 'Bob Martinez booked Wander Wimberley Hills', NOW() - INTERVAL '2 days'),
+    (3, 'booked', 'project', 3, 'Carol Singh booked Wander Concan River', NOW() - INTERVAL '1 day'),
+    (1, 'reviewed', 'project', 1, 'Alice Chen left a review for Wander Crystal Palms', NOW() - INTERVAL '3 days'),
+    (2, 'reviewed', 'project', 2, 'Bob Martinez left a review for Wander Wimberley Hills', NOW() - INTERVAL '2 days'),
+    (4, 'viewed', 'project', 4, 'David Lee viewed Wander Port Aransas', NOW() - INTERVAL '1 day'),
+    (5, 'viewed', 'project', 5, 'Emma Johnson viewed Wander Lake Travis', NOW() - INTERVAL '1 day');
 
   -- Success message
-  RAISE NOTICE 'Database seeded successfully: 5 users, 2 teams, 2 projects, 6 tasks, 10 activities';
+  RAISE NOTICE 'Database seeded successfully: 5 users, 5 categories, 6 properties, 3 reviews, 7 activities';
 
 END $$;
 
