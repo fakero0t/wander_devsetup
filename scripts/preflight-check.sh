@@ -1,62 +1,77 @@
 #!/bin/bash
 set -e
 
-echo "🚀 Starting Zero-to-Running Developer Environment..."
-
 # Detect OS
 OS=$(uname -s)
-echo "📋 Platform: $OS"
 
 # Check Docker
-echo -n "Checking Docker... "
+printf "  Checking Docker... "
 if ! command -v docker &> /dev/null || ! docker ps &> /dev/null; then
-  echo "❌ Docker is not running. Start Docker Desktop and try again."
+  echo "❌"
+  echo ""
+  echo "  Error: Docker is not running"
+  echo "  ──────────────────────────────────────"
+  echo "  💡 Solution: Start Docker Desktop and try again"
+  echo ""
   exit 1
 fi
-echo "✅"
+echo "✓"
 
 # Check kubectl
-echo -n "Checking kubectl... "
+printf "  Checking Kubernetes... "
 if ! command -v kubectl &> /dev/null; then
-  echo "❌ kubectl not found. Install kubectl and try again."
+  echo "❌"
+  echo ""
+  echo "  Error: kubectl not found"
+  echo "  ──────────────────────────────────────"
+  echo "  💡 Solution: Install kubectl:"
+  echo "     • macOS: brew install kubectl"
+  echo "     • Linux: See https://kubernetes.io/docs/tasks/tools/"
+  echo ""
   exit 1
 fi
 if ! kubectl cluster-info &> /dev/null; then
-  echo "❌ Kubernetes not configured. Enable in Docker Desktop or install Minikube."
+  echo "❌"
+  echo ""
+  echo "  Error: Kubernetes cluster not available"
+  echo "  ──────────────────────────────────────"
+  echo "  💡 Solution:"
+  echo "     • Enable Kubernetes in Docker Desktop, or"
+  echo "     • Start Minikube: minikube start"
+  echo ""
   exit 1
 fi
-echo "✅"
+echo "✓"
 
 # Check envsubst
-echo -n "Checking envsubst... "
+printf "  Checking tools... "
 if ! command -v envsubst &> /dev/null; then
-  echo "❌ envsubst not found. Install gettext package."
+  echo "❌"
+  echo ""
+  echo "  Error: envsubst not found"
+  echo "  ──────────────────────────────────────"
+  echo "  💡 Solution: Install gettext package"
+  echo "     • macOS: brew install gettext"
+  echo "     • Linux: sudo apt-get install gettext-base"
+  echo ""
   exit 1
 fi
-echo "✅"
+echo "✓"
 
-# Check make
-echo -n "Checking make... "
-if ! command -v make &> /dev/null; then
-  echo "❌ make not found. Install make and try again."
-  exit 1
-fi
-echo "✅"
-
-# Check disk space
-DISK_AVAIL=$(df -k . | awk 'NR==2 {print $4}')
-if [ "$DISK_AVAIL" -lt 10485760 ]; then
-  echo "⚠️  Warning: Less than 10GB disk space available"
+# Check disk space (silent warning)
+DISK_AVAIL=$(df -k . | awk 'NR==2 {print $4}' 2>/dev/null || echo "0")
+if [ "$DISK_AVAIL" -lt 10485760 ] && [ "$DISK_AVAIL" != "0" ]; then
+  echo "  ⚠️  Warning: Low disk space (< 10GB available)"
 fi
 
-# Check memory (macOS vs Linux)
+# Check memory (silent warning)
 if [ "$OS" = "Darwin" ]; then
-  MEM_TOTAL=$(sysctl -n hw.memsize | awk '{print $1/1024/1024/1024}')
+  MEM_TOTAL=$(sysctl -n hw.memsize 2>/dev/null | awk '{print $1/1024/1024/1024}' || echo "0")
 else
-  MEM_TOTAL=$(free -g | awk 'NR==2 {print $2}')
+  MEM_TOTAL=$(free -g 2>/dev/null | awk 'NR==2 {print $2}' || echo "0")
 fi
-if [ "${MEM_TOTAL%.*}" -lt 4 ]; then
-  echo "⚠️  Warning: Less than 4GB RAM available"
+if [ "${MEM_TOTAL%.*}" -lt 4 ] && [ "${MEM_TOTAL%.*}" != "0" ]; then
+  echo "  ⚠️  Warning: Low memory (< 4GB available)"
 fi
 
 # Function to check if a port is in use

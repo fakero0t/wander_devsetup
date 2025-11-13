@@ -5,99 +5,135 @@ NAMESPACE="wander-dev"
 MAX_ATTEMPTS=60
 INTERVAL=5
 
-echo "⏳ Waiting for all services to be healthy..."
-echo ""
+# Progress indicator function
+show_progress() {
+  local current=$1
+  local total=$2
+  local service=$3
+  local percent=$((current * 100 / total))
+  local filled=$((percent / 2))
+  local empty=$((50 - filled))
+  
+  # Ensure filled doesn't exceed 50
+  if [ $filled -gt 50 ]; then
+    filled=50
+    empty=0
+  fi
+  
+  printf "\r  ["
+  if [ $filled -gt 0 ]; then
+    printf "%${filled}s" | tr ' ' '█'
+  fi
+  if [ $empty -gt 0 ]; then
+    printf "%${empty}s" | tr ' ' '░'
+  fi
+  printf "] %3d%% %s" "$percent" "$service"
+}
 
 wait_for_pod() {
   local SERVICE=$1
   local PORT=$2
   local ATTEMPTS=0
   local START_TIME=$(date +%s)
+  local LAST_STATUS=""
   
-  echo "  📦 $SERVICE: Waiting for pod to be ready..."
+  # Friendly service names
+  local SERVICE_NAME=""
+  case $SERVICE in
+    postgres) SERVICE_NAME="Database" ;;
+    redis) SERVICE_NAME="Cache" ;;
+    api) SERVICE_NAME="API Server" ;;
+    frontend) SERVICE_NAME="Frontend" ;;
+    *) SERVICE_NAME="$SERVICE" ;;
+  esac
+  
+  printf "  📦 Starting $SERVICE_NAME..."
   
   while [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
     local ELAPSED=$(( $(date +%s) - START_TIME ))
     local POD_STATUS=$(kubectl get pods -n $NAMESPACE -l app=$SERVICE -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "NotFound")
     local POD_READY=$(kubectl get pods -n $NAMESPACE -l app=$SERVICE -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "false")
-    local POD_NAME=$(kubectl get pods -n $NAMESPACE -l app=$SERVICE -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "unknown")
     
-    echo "    [Attempt $((ATTEMPTS + 1))/$MAX_ATTEMPTS] [${ELAPSED}s elapsed] $SERVICE ($POD_NAME): Status=$POD_STATUS, Ready=$POD_READY"
+    # Only show progress if status changed or every 5 attempts
+    if [ "$POD_STATUS" != "$LAST_STATUS" ] || [ $((ATTEMPTS % 5)) -eq 0 ]; then
+      show_progress $ATTEMPTS $MAX_ATTEMPTS "$SERVICE_NAME"
+      LAST_STATUS="$POD_STATUS"
+    fi
     
     if [ "$POD_STATUS" = "Running" ]; then
-      # For postgres and redis, check if actually ready (not just running)
-      if [ "$SERVICE" = "postgres" ] || [ "$SERVICE" = "redis" ]; then
-        if [ "$POD_READY" = "true" ]; then
-          echo "  ✅ $SERVICE: ready (took ${ELAPSED}s)"
-          return 0
-        else
-          echo "    ⏳ $SERVICE: Running but not ready yet (still initializing)..."
-        fi
+      if [ "$POD_READY" = "true" ]; then
+        printf "\r  ✅ $SERVICE_NAME is ready (${ELAPSED}s)\n"
+        return 0
       else
-        # For API and frontend, check Ready status (Kubernetes readiness probes handle health checks)
-        if [ "$POD_READY" = "true" ]; then
-          echo "  ✅ $SERVICE: ready (took ${ELAPSED}s)"
-          return 0
+        # Health check in progress
+        if [ "$SERVICE" = "postgres" ] || [ "$SERVICE" = "redis" ]; then
+          # Database services initializing
+          : # Silent wait
         else
-          echo "    ⏳ $SERVICE: Running but not ready yet (readiness probe checking)..."
+          # Application services - health check running
+          : # Silent wait
         fi
-      fi
-    elif [ "$POD_STATUS" = "NotFound" ]; then
-      echo "    ⏳ $SERVICE: Pod not found yet, waiting..."
-    elif [ "$POD_STATUS" = "Pending" ]; then
-      # Show detailed error every 10 attempts or on first attempt
-      if [ $((ATTEMPTS % 10)) -eq 0 ] || [ $ATTEMPTS -eq 0 ]; then
-        echo "    ⏳ $SERVICE: Pod is pending (scheduling/starting)..."
-        echo "    🔍 Checking pod events for details:"
-        kubectl describe pod -n $NAMESPACE -l app=$SERVICE 2>/dev/null | grep -A 10 "Events:" | head -15 || true
-      else
-        echo "    ⏳ $SERVICE: Pod is pending (scheduling/starting)..."
       fi
     elif [ "$POD_STATUS" = "CrashLoopBackOff" ] || [ "$POD_STATUS" = "Error" ]; then
-      echo "    ❌ $SERVICE: Pod in error state: $POD_STATUS"
-      kubectl logs -n $NAMESPACE -l app=$SERVICE --tail=20
+      printf "\r  ❌ $SERVICE_NAME failed to start\n"
+      echo ""
+      echo "  Error Details:"
+      echo "  ──────────────────────────────────────"
+      kubectl logs -n $NAMESPACE -l app=$SERVICE --tail=10 2>/dev/null | sed 's/^/  /' || echo "  Unable to retrieve logs"
+      echo ""
+      echo "  💡 Tip: Check the logs above for error messages"
+      echo "  💡 Run 'make logs-$SERVICE' for more details"
       return 1
+    elif [ "$POD_STATUS" = "Pending" ]; then
+      # Only show details on first attempt or every 20 attempts
+      if [ $ATTEMPTS -eq 0 ] || [ $((ATTEMPTS % 20)) -eq 0 ]; then
+        : # Silent wait
+      fi
     fi
     
     ATTEMPTS=$((ATTEMPTS + 1))
     sleep $INTERVAL
   done
   
-  echo "  ❌ $SERVICE: failed to start after $MAX_ATTEMPTS attempts ($((MAX_ATTEMPTS * INTERVAL))s)"
-  echo "    Showing recent logs:"
-  kubectl logs -n $NAMESPACE -l app=$SERVICE --tail=50
+  printf "\r  ❌ $SERVICE_NAME failed to start (timeout after $((MAX_ATTEMPTS * INTERVAL))s)\n"
+  echo ""
+  echo "  Error Details:"
+  echo "  ──────────────────────────────────────"
+  kubectl logs -n $NAMESPACE -l app=$SERVICE --tail=15 2>/dev/null | sed 's/^/  /' || echo "  Unable to retrieve logs"
+  echo ""
+  echo "  💡 Troubleshooting:"
+  echo "     • Check if all dependencies are running: make status"
+  echo "     • View detailed logs: make logs-$SERVICE"
+  echo "     • Restart the service: make restart"
   return 1
 }
 
-# Wait for postgres
-echo "🔵 Phase 1: Database Services"
-echo "----------------------------------------"
+# Phase 1: Database Services
+echo ""
+echo "🔵 Phase 1: Starting Database Services"
+echo "─────────────────────────────────────────"
 wait_for_pod postgres 5432 &
 PG_PID=$!
 
-# Wait for redis
 wait_for_pod redis 6379 &
 REDIS_PID=$!
 
-# Wait for database services first
 wait $PG_PID || exit 1
 wait $REDIS_PID || exit 1
 
 echo ""
-echo "🔵 Phase 2: Application Services"
-echo "----------------------------------------"
+echo "🔵 Phase 2: Starting Application Services"
+echo "─────────────────────────────────────────"
 
-# Now wait for application services
 wait_for_pod api 4000 &
 API_PID=$!
 
 wait_for_pod frontend 3000 &
 FRONTEND_PID=$!
 
-# Wait for all
 wait $API_PID || exit 1
 wait $FRONTEND_PID || exit 1
 
 echo ""
-echo "✅ All services are healthy!"
+echo "✅ All services are healthy and ready!"
 exit 0

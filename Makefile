@@ -28,110 +28,59 @@ install-prereqs: ## Install required prerequisites (detects OS automatically)
 	@./scripts/install-prerequisites.sh
 
 dev: install-prereqs validate ## Start the entire development environment
-	@echo "========================================"
-	@echo "🚀 STARTING WANDER DEV ENVIRONMENT"
-	@echo "========================================"
 	@echo ""
-	@echo "📋 Step 1: Running preflight checks..."
-	@echo "----------------------------------------"
+	@echo "🚀 Starting Wander Development Environment"
+	@echo "════════════════════════════════════════"
+	@echo ""
+	@echo "Step 1/8: Checking system requirements..."
 	./scripts/preflight-check.sh
 	@echo ""
-	@echo "📋 Step 2: Loading configuration..."
-	@echo "----------------------------------------"
-	@node scripts/load-config.js || (echo "❌ Failed to load configuration. Please ensure config.yaml exists." && exit 1)
-	@echo "✓ Configuration loaded"
+	@echo "Step 2/8: Loading configuration..."
+	@node scripts/load-config.js >/dev/null 2>&1 || (echo "❌ Configuration error. Please check your setup." && exit 1)
+	@echo "  ✓ Configuration loaded"
 	@echo ""
-	@echo "📋 Step 3: Creating required directories..."
-	@echo "----------------------------------------"
+	@echo "Step 3/8: Preparing deployment files..."
 	mkdir -p .pids infra/generated
-	@echo "✓ Created .pids directory"
-	@echo "✓ Created infra/generated directory"
+	@export WORKSPACE_PATH=$(WORKSPACE_PATH) && ./scripts/prepare-manifests.sh
 	@echo ""
-	@echo "📋 Step 4: Preparing Kubernetes manifests..."
-	@echo "----------------------------------------"
-	@echo "WORKSPACE_PATH=$(WORKSPACE_PATH)"
-	export WORKSPACE_PATH=$(WORKSPACE_PATH) && ./scripts/prepare-manifests.sh
+	@echo "Step 4/8: Building application images..."
+	@echo "  Building API server..."
+	@(if minikube status 2>/dev/null | grep -q Running; then eval $$(minikube docker-env); fi; docker build --quiet -t wander-api:latest -f services/api/Dockerfile$(DOCKERFILE_SUFFIX) . >/dev/null 2>&1 && echo "  ✓ API image built" || (echo "  ❌ Failed to build API image" && exit 1))
+	@echo "  Building frontend..."
+	@(if minikube status 2>/dev/null | grep -q Running; then eval $$(minikube docker-env); fi; docker build --quiet -t wander-frontend:latest -f services/frontend/Dockerfile$(DOCKERFILE_SUFFIX) . >/dev/null 2>&1 && echo "  ✓ Frontend image built" || (echo "  ❌ Failed to build frontend image" && exit 1))
 	@echo ""
-	@echo "🔨 Step 5: Building Docker images..."
-	@echo "========================================"
+	@echo "Step 5/8: Deploying to Kubernetes..."
+	@kubectl apply -f infra/generated/namespace.yaml >/dev/null 2>&1 && echo "  ✓ Namespace created"
+	@kubectl apply -f infra/generated/configmap.yaml >/dev/null 2>&1 && echo "  ✓ Configuration applied"
+	@kubectl apply -f infra/generated/seed-configmap.yaml >/dev/null 2>&1 && echo "  ✓ Database seed prepared"
+	@kubectl apply -f infra/generated/postgres.yaml >/dev/null 2>&1 && echo "  ✓ Database deployed"
+	@kubectl apply -f infra/generated/redis.yaml >/dev/null 2>&1 && echo "  ✓ Cache deployed"
+	@kubectl apply -f infra/generated/api.yaml >/dev/null 2>&1 && echo "  ✓ API server deployed"
+	@kubectl apply -f infra/generated/frontend.yaml >/dev/null 2>&1 && echo "  ✓ Frontend deployed"
 	@echo ""
-	@echo "Building wander-api:latest (using Dockerfile$(DOCKERFILE_SUFFIX))..."
-	@echo "----------------------------------------"
-	@(if minikube status 2>/dev/null | grep -q Running; then eval $$(minikube docker-env); fi; docker build --progress=plain -t wander-api:latest -f services/api/Dockerfile$(DOCKERFILE_SUFFIX) .)
-	@echo ""
-	@echo "Building wander-frontend:latest (using Dockerfile$(DOCKERFILE_SUFFIX))..."
-	@echo "----------------------------------------"
-	@(if minikube status 2>/dev/null | grep -q Running; then eval $$(minikube docker-env); fi; docker build --progress=plain -t wander-frontend:latest -f services/frontend/Dockerfile$(DOCKERFILE_SUFFIX) .)
-	@echo ""
-	@echo "🎯 Step 6: Applying Kubernetes manifests..."
-	@echo "========================================"
-	@echo ""
-	@echo "Applying namespace.yaml..."
-	kubectl apply -f infra/generated/namespace.yaml -v=5
-	@echo ""
-	@echo "Applying configmap.yaml..."
-	kubectl apply -f infra/generated/configmap.yaml -v=5
-	@echo ""
-	@echo "Applying seed-configmap.yaml..."
-	kubectl apply -f infra/generated/seed-configmap.yaml -v=5
-	@echo "Verifying ConfigMap was created..."
-	@kubectl get configmap wander-seed-script -n $(NAMESPACE) || (echo "❌ ERROR: ConfigMap wander-seed-script not found!" && exit 1)
-	@echo "✓ ConfigMap verified"
-	@echo ""
-	@echo "Applying postgres.yaml..."
-	kubectl apply -f infra/generated/postgres.yaml -v=5
-	@echo ""
-	@echo "Applying redis.yaml..."
-	kubectl apply -f infra/generated/redis.yaml -v=5
-	@echo ""
-	@echo "Applying api.yaml..."
-	kubectl apply -f infra/generated/api.yaml -v=5
-	@echo ""
-	@echo "Applying frontend.yaml..."
-	kubectl apply -f infra/generated/frontend.yaml -v=5
-	@echo ""
-	@echo "⏳ Step 7: Waiting for services to be ready..."
-	@echo "========================================"
+	@echo "Step 6/8: Waiting for services to be healthy..."
 	./scripts/wait-for-services.sh
 	@echo ""
-	@echo "🔌 Step 8: Setting up port forwards..."
-	@echo "========================================"
-	@echo "Port forwarding frontend ($(FRONTEND_PORT):3000)..."
-	kubectl port-forward -n $(NAMESPACE) svc/frontend $(FRONTEND_PORT):3000 -v=5 & echo $$! > .pids/frontend.pid
-	@echo "✓ Frontend port-forward PID: $$(cat .pids/frontend.pid)"
+	@echo "Step 7/8: Setting up network connections..."
+	@kubectl port-forward -n $(NAMESPACE) svc/frontend $(FRONTEND_PORT):3000 >/dev/null 2>&1 & echo $$! > .pids/frontend.pid && echo "  ✓ Frontend: http://localhost:$(FRONTEND_PORT)"
+	@kubectl port-forward -n $(NAMESPACE) svc/api $(API_PORT):4000 >/dev/null 2>&1 & echo $$! > .pids/api.pid && echo "  ✓ API: http://localhost:$(API_PORT)"
+	@kubectl port-forward -n $(NAMESPACE) svc/postgres $(POSTGRES_PORT):5432 >/dev/null 2>&1 & echo $$! > .pids/postgres.pid && echo "  ✓ Database: localhost:$(POSTGRES_PORT)"
+	@kubectl port-forward -n $(NAMESPACE) svc/redis $(REDIS_PORT):6379 >/dev/null 2>&1 & echo $$! > .pids/redis.pid && echo "  ✓ Cache: localhost:$(REDIS_PORT)"
+	@sleep 2
 	@echo ""
-	@echo "Port forwarding API ($(API_PORT):4000)..."
-	kubectl port-forward -n $(NAMESPACE) svc/api $(API_PORT):4000 -v=5 & echo $$! > .pids/api.pid
-	@echo "✓ API port-forward PID: $$(cat .pids/api.pid)"
+	@echo "════════════════════════════════════════"
+	@echo "✅ Environment is ready!"
+	@echo "════════════════════════════════════════"
 	@echo ""
-	@echo "Port forwarding Postgres ($(POSTGRES_PORT):5432)..."
-	kubectl port-forward -n $(NAMESPACE) svc/postgres $(POSTGRES_PORT):5432 -v=5 & echo $$! > .pids/postgres.pid
-	@echo "✓ Postgres port-forward PID: $$(cat .pids/postgres.pid)"
+	@echo "🌐 Access your application:"
+	@echo "   • Frontend:   http://localhost:$(FRONTEND_PORT)"
+	@echo "   • API Health: http://localhost:$(API_PORT)/health"
 	@echo ""
-	@echo "Port forwarding Redis ($(REDIS_PORT):6379)..."
-	kubectl port-forward -n $(NAMESPACE) svc/redis $(REDIS_PORT):6379 -v=5 & echo $$! > .pids/redis.pid
-	@echo "✓ Redis port-forward PID: $$(cat .pids/redis.pid)"
+	@echo "💡 Useful commands:"
+	@echo "   • make status     - Check service status"
+	@echo "   • make logs       - View all logs"
+	@echo "   • make teardown   - Stop everything"
 	@echo ""
-	@echo "Waiting for port-forwards to establish..."
-	sleep 2
-	@echo ""
-	@echo "========================================"
-	@echo "✅ ENVIRONMENT IS READY!"
-	@echo "========================================"
-	@echo ""
-	@echo "📝 Access your environment:"
-	@echo "   Frontend:   http://localhost:$(FRONTEND_PORT)"
-	@echo "   API:        http://localhost:$(API_PORT)"
-	@echo "   API Health: http://localhost:$(API_PORT)/health"
-	@echo "   Postgres:   localhost:$(POSTGRES_PORT)"
-	@echo "   Redis:      localhost:$(REDIS_PORT)"
-	@echo ""
-	@echo "🔍 Monitor logs with:"
-	@echo "   make logs          # All services"
-	@echo "   make logs-api      # API only"
-	@echo "   make logs-frontend # Frontend only"
-	@echo ""
-	@echo "========================================"
 
 teardown: ## Stop and clean up the entire environment
 	@echo "🧹 Cleaning up environment..."
