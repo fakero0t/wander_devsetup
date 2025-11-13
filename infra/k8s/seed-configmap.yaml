@@ -1,0 +1,11 @@
+# ConfigMap for database seed script
+# This file uses envsubst for variable substitution
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wander-seed-script
+  namespace: wander-dev
+data:
+  seed.sql: |
+${SEED_SQL_CONTENT}
+

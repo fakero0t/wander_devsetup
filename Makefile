@@ -65,6 +65,9 @@ dev: install-prereqs validate ## Start the entire development environment
 	@echo "Applying configmap.yaml..."
 	kubectl apply -f infra/generated/configmap.yaml -v=5
 	@echo ""
+	@echo "Applying seed-configmap.yaml..."
+	kubectl apply -f infra/generated/seed-configmap.yaml -v=5
+	@echo ""
 	@echo "Applying postgres.yaml..."
 	kubectl apply -f infra/generated/postgres.yaml -v=5
 	@echo ""

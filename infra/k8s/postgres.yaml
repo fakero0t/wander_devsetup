@@ -1,5 +1,5 @@
 # PostgreSQL deployment and service
-# This file uses envsubst for variable substitution (${WORKSPACE_PATH})
+# This file uses envsubst for variable substitution
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -71,9 +71,8 @@ spec:
           readOnly: true
       volumes:
       - name: seed-script
-        hostPath:
-          path: ${WORKSPACE_PATH}/db/init
-          type: Directory
+        configMap:
+          name: wander-seed-script
 ---
 apiVersion: v1
 kind: Service

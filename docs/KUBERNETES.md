@@ -497,28 +497,31 @@ kubectl top pods -n wander-dev
 
 ## Volumes and Storage
 
-### hostPath Volumes (Development)
+### ConfigMap Volumes (Development)
 
-Wander uses **hostPath** to mount the seed script from the host into the PostgreSQL pod.
+Wander uses **ConfigMap** to mount the seed script into the PostgreSQL pod. This approach is cross-platform and works in any Kubernetes environment (Minikube, Docker Desktop, cloud, etc.).
 
 **Example:**
 ```yaml
 volumeMounts:
   - name: seed-script
-    mountPath: /docker-entrypoint-initdb.d/seed.sql
-    subPath: seed.sql
+    mountPath: /docker-entrypoint-initdb.d
+    readOnly: true
 
 volumes:
   - name: seed-script
-    hostPath:
-      path: /Users/username/wander_devsetup/db/init/seed.sql
-      type: File
+    configMap:
+      name: wander-seed-script
 ```
 
-**Limitations:**
-- Only works on single-node clusters (Minikube OK, multi-node ❌)
-- Not portable across different machines
-- No data persistence if pod is deleted
+**Benefits:**
+- Works on any OS (macOS, Linux, Windows)
+- Works in any Kubernetes environment (Minikube, Docker Desktop, kind, cloud)
+- No host filesystem dependencies
+- Version controlled (seed.sql is embedded in the ConfigMap)
+- Portable across different machines
+
+The seed script (`db/init/seed.sql`) is automatically embedded into the ConfigMap during manifest generation via `prepare-manifests.sh`.
 
 ### Production Storage
 

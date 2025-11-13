@@ -13,6 +13,9 @@ mkdir -p infra/generated
 export NODE_ENV
 export WORKSPACE_PATH
 
+# Read seed.sql and prepare for ConfigMap (indent each line with 4 spaces)
+export SEED_SQL_CONTENT=$(cat db/init/seed.sql | sed 's/^/    /')
+
 # Generate conditional blocks based on environment
 if [ "$NODE_ENV" = "development" ]; then
   # Development: include volume mounts and dev commands
@@ -51,7 +54,7 @@ fi
 # Process all YAML files
 for file in infra/k8s/*.yaml; do
   filename=$(basename "$file")
-  envsubst '$NODE_ENV $WORKSPACE_PATH $DEV_API_VOLUME $API_COMMAND $DEV_VOLUME_MOUNT $DEV_COMMAND' < "$file" > "infra/generated/$filename"
+  envsubst '$NODE_ENV $WORKSPACE_PATH $DEV_API_VOLUME $API_COMMAND $DEV_VOLUME_MOUNT $DEV_COMMAND $SEED_SQL_CONTENT' < "$file" > "infra/generated/$filename"
   echo "  ✅ Generated infra/generated/$filename"
 done
 
