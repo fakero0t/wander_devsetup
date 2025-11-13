@@ -1,5 +1,5 @@
 # API deployment and service
-# This file uses envsubst for variable substitution (${NODE_ENV}, ${API_COMMAND}, ${DEV_API_VOLUME})
+# This file uses envsubst for variable substitution
 apiVersion: apps/v1
 kind: Deployment
 metadata:

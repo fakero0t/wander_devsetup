@@ -1,5 +1,5 @@
 # Frontend deployment and service
-# This file uses envsubst for variable substitution (${DEV_COMMAND}, ${DEV_VOLUME_MOUNT}, ${WORKSPACE_PATH})
+# This file uses envsubst for variable substitution
 apiVersion: apps/v1
 kind: Deployment
 metadata:

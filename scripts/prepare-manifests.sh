@@ -51,7 +51,7 @@ fi
 # Process all YAML files
 for file in infra/k8s/*.yaml; do
   filename=$(basename "$file")
-  envsubst < "$file" > "infra/generated/$filename"
+  envsubst '$NODE_ENV $WORKSPACE_PATH $DEV_API_VOLUME $API_COMMAND $DEV_VOLUME_MOUNT $DEV_COMMAND' < "$file" > "infra/generated/$filename"
   echo "  ✅ Generated infra/generated/$filename"
 done
 

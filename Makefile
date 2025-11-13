@@ -7,6 +7,12 @@ export
 NAMESPACE := wander-dev
 WORKSPACE_PATH := $(shell pwd)
 
+# Set default ports if not in .env
+FRONTEND_PORT ?= 3000
+API_PORT ?= 4000
+POSTGRES_PORT ?= 5432
+REDIS_PORT ?= 6379
+
 help: ## Display this help message
 	@echo "Wander Developer Environment - Available Commands:"
 	@echo ""
@@ -16,32 +22,103 @@ install-prereqs: ## Install required prerequisites (detects OS automatically)
 	@./scripts/install-prerequisites.sh
 
 dev: install-prereqs validate ## Start the entire development environment
-	@./scripts/preflight-check.sh
-	@[ -f .env ] || cp .env.example .env
-	@mkdir -p .pids infra/generated
-	@export WORKSPACE_PATH=$(WORKSPACE_PATH) && ./scripts/prepare-manifests.sh
-	@echo "🔨 Building Docker images..."
-	@docker build -t wander-api:latest -f services/api/Dockerfile .
-	@docker build -t wander-frontend:latest -f services/frontend/Dockerfile .
-	@echo "🎯 Applying Kubernetes manifests..."
-	@kubectl apply -f infra/generated/namespace.yaml
-	@kubectl apply -f infra/generated/configmap.yaml
-	@kubectl apply -f infra/generated/postgres.yaml
-	@kubectl apply -f infra/generated/redis.yaml
-	@kubectl apply -f infra/generated/api.yaml
-	@kubectl apply -f infra/generated/frontend.yaml
-	@./scripts/wait-for-services.sh
-	@echo "🔌 Setting up port forwards..."
-	@kubectl port-forward -n $(NAMESPACE) svc/frontend 3000:3000 > /dev/null 2>&1 & echo $$! > .pids/frontend.pid
-	@kubectl port-forward -n $(NAMESPACE) svc/api 4000:4000 > /dev/null 2>&1 & echo $$! > .pids/api.pid
-	@kubectl port-forward -n $(NAMESPACE) svc/postgres 5432:5432 > /dev/null 2>&1 & echo $$! > .pids/postgres.pid
-	@kubectl port-forward -n $(NAMESPACE) svc/redis 6379:6379 > /dev/null 2>&1 & echo $$! > .pids/redis.pid
-	@sleep 2
-	@echo "✅ Environment is ready!"
+	@echo "========================================"
+	@echo "🚀 STARTING WANDER DEV ENVIRONMENT"
+	@echo "========================================"
+	@echo ""
+	@echo "📋 Step 1: Running preflight checks..."
+	@echo "----------------------------------------"
+	./scripts/preflight-check.sh
+	@echo ""
+	@echo "📋 Step 2: Checking .env file..."
+	@echo "----------------------------------------"
+	[ -f .env ] && echo "✓ .env file exists" || (echo "⚠ Creating .env from .env.example" && cp .env.example .env)
+	@echo ""
+	@echo "📋 Step 3: Creating required directories..."
+	@echo "----------------------------------------"
+	mkdir -p .pids infra/generated
+	@echo "✓ Created .pids directory"
+	@echo "✓ Created infra/generated directory"
+	@echo ""
+	@echo "📋 Step 4: Preparing Kubernetes manifests..."
+	@echo "----------------------------------------"
+	@echo "WORKSPACE_PATH=$(WORKSPACE_PATH)"
+	export WORKSPACE_PATH=$(WORKSPACE_PATH) && ./scripts/prepare-manifests.sh
+	@echo ""
+	@echo "🔨 Step 5: Building Docker images..."
+	@echo "========================================"
+	@echo ""
+	@echo "Building wander-api:latest..."
+	@echo "----------------------------------------"
+	@(if minikube status 2>/dev/null | grep -q Running; then eval $$(minikube docker-env); fi; docker build --progress=plain -t wander-api:latest -f services/api/Dockerfile .)
+	@echo ""
+	@echo "Building wander-frontend:latest..."
+	@echo "----------------------------------------"
+	@(if minikube status 2>/dev/null | grep -q Running; then eval $$(minikube docker-env); fi; docker build --progress=plain -t wander-frontend:latest -f services/frontend/Dockerfile .)
+	@echo ""
+	@echo "🎯 Step 6: Applying Kubernetes manifests..."
+	@echo "========================================"
+	@echo ""
+	@echo "Applying namespace.yaml..."
+	kubectl apply -f infra/generated/namespace.yaml -v=5
+	@echo ""
+	@echo "Applying configmap.yaml..."
+	kubectl apply -f infra/generated/configmap.yaml -v=5
+	@echo ""
+	@echo "Applying postgres.yaml..."
+	kubectl apply -f infra/generated/postgres.yaml -v=5
+	@echo ""
+	@echo "Applying redis.yaml..."
+	kubectl apply -f infra/generated/redis.yaml -v=5
+	@echo ""
+	@echo "Applying api.yaml..."
+	kubectl apply -f infra/generated/api.yaml -v=5
+	@echo ""
+	@echo "Applying frontend.yaml..."
+	kubectl apply -f infra/generated/frontend.yaml -v=5
+	@echo ""
+	@echo "⏳ Step 7: Waiting for services to be ready..."
+	@echo "========================================"
+	./scripts/wait-for-services.sh
+	@echo ""
+	@echo "🔌 Step 8: Setting up port forwards..."
+	@echo "========================================"
+	@echo "Port forwarding frontend ($(FRONTEND_PORT):3000)..."
+	kubectl port-forward -n $(NAMESPACE) svc/frontend $(FRONTEND_PORT):3000 -v=5 & echo $$! > .pids/frontend.pid
+	@echo "✓ Frontend port-forward PID: $$(cat .pids/frontend.pid)"
+	@echo ""
+	@echo "Port forwarding API ($(API_PORT):4000)..."
+	kubectl port-forward -n $(NAMESPACE) svc/api $(API_PORT):4000 -v=5 & echo $$! > .pids/api.pid
+	@echo "✓ API port-forward PID: $$(cat .pids/api.pid)"
+	@echo ""
+	@echo "Port forwarding Postgres ($(POSTGRES_PORT):5432)..."
+	kubectl port-forward -n $(NAMESPACE) svc/postgres $(POSTGRES_PORT):5432 -v=5 & echo $$! > .pids/postgres.pid
+	@echo "✓ Postgres port-forward PID: $$(cat .pids/postgres.pid)"
+	@echo ""
+	@echo "Port forwarding Redis ($(REDIS_PORT):6379)..."
+	kubectl port-forward -n $(NAMESPACE) svc/redis $(REDIS_PORT):6379 -v=5 & echo $$! > .pids/redis.pid
+	@echo "✓ Redis port-forward PID: $$(cat .pids/redis.pid)"
+	@echo ""
+	@echo "Waiting for port-forwards to establish..."
+	sleep 2
+	@echo ""
+	@echo "========================================"
+	@echo "✅ ENVIRONMENT IS READY!"
+	@echo "========================================"
+	@echo ""
 	@echo "📝 Access your environment:"
-	@echo "   Frontend:  http://localhost:3000"
-	@echo "   API:       http://localhost:4000"
-	@echo "   API Health: http://localhost:4000/health"
+	@echo "   Frontend:   http://localhost:$(FRONTEND_PORT)"
+	@echo "   API:        http://localhost:$(API_PORT)"
+	@echo "   API Health: http://localhost:$(API_PORT)/health"
+	@echo "   Postgres:   localhost:$(POSTGRES_PORT)"
+	@echo "   Redis:      localhost:$(REDIS_PORT)"
+	@echo ""
+	@echo "🔍 Monitor logs with:"
+	@echo "   make logs          # All services"
+	@echo "   make logs-api      # API only"
+	@echo "   make logs-frontend # Frontend only"
+	@echo ""
+	@echo "========================================"
 
 teardown: ## Stop and clean up the entire environment
 	@echo "🧹 Cleaning up environment..."
@@ -59,8 +136,8 @@ restart: teardown dev ## Restart the environment (teardown + dev)
 
 build: ## Build Docker images only
 	@echo "🔨 Building Docker images..."
-	@docker build -t wander-api:latest -f services/api/Dockerfile .
-	@docker build -t wander-frontend:latest -f services/frontend/Dockerfile .
+	@(if minikube status 2>/dev/null | grep -q Running; then eval $$(minikube docker-env); fi; docker build -t wander-api:latest -f services/api/Dockerfile .)
+	@(if minikube status 2>/dev/null | grep -q Running; then eval $$(minikube docker-env); fi; docker build -t wander-frontend:latest -f services/frontend/Dockerfile .)
 	@echo "✅ Images built successfully"
 
 logs: ## Stream logs from all pods

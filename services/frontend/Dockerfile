@@ -8,7 +8,7 @@ COPY packages/shared ./packages/shared
 COPY services/frontend ./services/frontend
 
 # Install dependencies
-RUN npm ci --workspaces
+RUN npm install --workspaces --no-audit --no-fund
 
 # Build shared package first
 RUN npm run build --workspace=@wander/shared
