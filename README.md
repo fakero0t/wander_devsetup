@@ -22,8 +22,6 @@ make dev
 
 This single command handles everything: builds Docker images, starts databases, launches services, and sets up port forwarding.
 
-**First time setup:** Start Minikube (`minikube start --memory=4096 --cpus=2`) and run `npm install`, then `make dev`.
-
 ### Access the Application
 
 Once running, open your browser:
