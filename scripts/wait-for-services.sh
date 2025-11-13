@@ -5,31 +5,6 @@ NAMESPACE="wander-dev"
 MAX_ATTEMPTS=60
 INTERVAL=5
 
-# Progress indicator function
-show_progress() {
-  local current=$1
-  local total=$2
-  local service=$3
-  local percent=$((current * 100 / total))
-  local filled=$((percent / 2))
-  local empty=$((50 - filled))
-  
-  # Ensure filled doesn't exceed 50
-  if [ $filled -gt 50 ]; then
-    filled=50
-    empty=0
-  fi
-  
-  printf "\r  ["
-  if [ $filled -gt 0 ]; then
-    printf "%${filled}s" | tr ' ' '█'
-  fi
-  if [ $empty -gt 0 ]; then
-    printf "%${empty}s" | tr ' ' '░'
-  fi
-  printf "] %3d%% %s" "$percent" "$service"
-}
-
 wait_for_pod() {
   local SERVICE=$1
   local PORT=$2
@@ -47,6 +22,9 @@ wait_for_pod() {
     *) SERVICE_NAME="$SERVICE" ;;
   esac
   
+  # Loading spinner characters
+  local spinner_chars=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+  
   printf "  📦 Starting $SERVICE_NAME..."
   
   while [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
@@ -54,16 +32,15 @@ wait_for_pod() {
     local POD_STATUS=$(kubectl get pods -n $NAMESPACE -l app=$SERVICE -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "NotFound")
     local POD_READY=$(kubectl get pods -n $NAMESPACE -l app=$SERVICE -o jsonpath='{.items[0].status.containerStatuses[0].ready}' 2>/dev/null || echo "false")
     
-    # Only show progress if status changed or every 5 attempts
-    if [ "$POD_STATUS" != "$LAST_STATUS" ] || [ $((ATTEMPTS % 5)) -eq 0 ]; then
-      show_progress $ATTEMPTS $MAX_ATTEMPTS "$SERVICE_NAME"
+    # Show loading spinner
+    if [ "$POD_STATUS" != "$LAST_STATUS" ] || [ $((ATTEMPTS % 2)) -eq 0 ]; then
+      local spinner_index=$((ATTEMPTS % ${#spinner_chars[@]}))
+      printf "\r  %s %s..." "${spinner_chars[$spinner_index]}" "$SERVICE_NAME"
       LAST_STATUS="$POD_STATUS"
     fi
     
     if [ "$POD_STATUS" = "Running" ]; then
         if [ "$POD_READY" = "true" ]; then
-        # Show 100% progress before success message
-        show_progress $MAX_ATTEMPTS $MAX_ATTEMPTS "$SERVICE_NAME"
         printf "\r  ✅ $SERVICE_NAME is ready (${ELAPSED}s)\n"
           return 0
         else

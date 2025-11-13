@@ -1,4 +1,4 @@
-.PHONY: help install-prereqs dev teardown restart build logs logs-api logs-frontend logs-postgres logs-redis status seed-db test shell-api db-shell clean validate
+.PHONY: help install-prereqs dev teardown restart build logs logs-api logs-frontend logs-postgres logs-redis status seed-db test shell-api db-shell clean validate validate-prereqs validate-services
 
 # Load config and export variables
 -include .config.env
@@ -27,36 +27,49 @@ help: ## Display this help message
 install-prereqs: ## Install required prerequisites (detects OS automatically)
 	@./scripts/install-prerequisites.sh
 
-dev: install-prereqs validate ## Start the entire development environment
+dev: install-prereqs ## Start the entire development environment
+	@./scripts/validate-system.sh --prerequisites-only
 	@echo ""
-	@echo "🚀 Starting Wander Development Environment"
-	@echo "════════════════════════════════════════"
+	@echo "\033[36m\033[1m"
+	@echo "██╗    ██╗ █████╗ ███╗   ██╗██████╗ ███████╗██████╗ "
+	@echo "██║    ██║██╔══██╗████╗  ██║██╔══██╗██╔════╝██╔══██╗"
+	@echo "██║ █╗ ██║███████║██╔██╗ ██║██║  ██║█████╗  ██████╔╝"
+	@echo "██║███╗██║██╔══██║██║╚██╗██║██║  ██║██╔══╝  ██╔══██╗"
+	@echo "╚███╔███╔╝██║  ██║██║ ╚████║██████╔╝███████╗██║  ██║"
+	@echo " ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═══╝╚═════╝ ╚══════╝╚═╝  ╚═╝"
+	@echo "\033[0m"
 	@echo ""
-	@echo "Step 1/9: Checking system requirements..."
-	./scripts/preflight-check.sh
+	@echo "\033[33m\033[1m▶ SYSTEM REQUIREMENTS\033[0m"
+	./scripts/preflight-check.sh --skip-ports
 	@echo ""
 	@if [ "$(SKIP_CONFIG)" != "true" ]; then \
-		echo "Step 2/9: Configuring environment..."; \
+		echo "\033[33m\033[1m▶ CONFIGURATION\033[0m"; \
 		echo "  Opening configuration editor..."; \
-		node scripts/config-editor-server.js || (echo "❌ Configuration cancelled or failed" && exit 1); \
-		echo "  ✓ Configuration saved"; \
+		if node scripts/config-editor-server.js; then \
+			echo "  ✓ Configuration saved"; \
+		else \
+			echo "  ⚠️  Configuration editor closed. Continuing with existing config..."; \
+		fi; \
 		echo ""; \
 	fi
-	@echo "Step 3/9: Loading configuration..."
+	@echo "\033[33m\033[1m▶ LOADING CONFIG\033[0m"
 	@node scripts/load-config.js >/dev/null 2>&1 || (echo "❌ Configuration error. Please check your setup." && exit 1)
 	@echo "  ✓ Configuration loaded"
 	@echo ""
-	@echo "Step 4/9: Preparing deployment files..."
+	@echo "\033[33m\033[1m▶ CHECKING PORTS\033[0m"
+	@./scripts/preflight-check.sh --ports-only || exit 1
+	@echo ""
+	@echo "\033[33m\033[1m▶ PREPARING DEPLOYMENT\033[0m"
 	mkdir -p .pids infra/generated
 	@export WORKSPACE_PATH=$(WORKSPACE_PATH) && ./scripts/prepare-manifests.sh
 	@echo ""
-	@echo "Step 5/9: Building application images..."
+	@echo "\033[33m\033[1m▶ BUILDING IMAGES\033[0m"
 	@echo "  Building API server..."
 	@(if minikube status 2>/dev/null | grep -q Running; then eval $$(minikube docker-env); fi; docker build --quiet -t wander-api:latest -f services/api/Dockerfile$(DOCKERFILE_SUFFIX) . >/dev/null 2>&1 && echo "  ✓ API image built" || (echo "  ❌ Failed to build API image" && exit 1))
 	@echo "  Building frontend..."
 	@(if minikube status 2>/dev/null | grep -q Running; then eval $$(minikube docker-env); fi; docker build --quiet -t wander-frontend:latest -f services/frontend/Dockerfile$(DOCKERFILE_SUFFIX) . >/dev/null 2>&1 && echo "  ✓ Frontend image built" || (echo "  ❌ Failed to build frontend image" && exit 1))
 	@echo ""
-	@echo "Step 6/9: Deploying to Kubernetes..."
+	@echo "\033[33m\033[1m▶ DEPLOYING TO KUBERNETES\033[0m"
 	@kubectl apply -f infra/generated/namespace.yaml >/dev/null 2>&1 && echo "  ✓ Namespace created"
 	@kubectl apply -f infra/generated/configmap.yaml >/dev/null 2>&1 && echo "  ✓ Configuration applied"
 	@kubectl apply -f infra/generated/seed-configmap.yaml >/dev/null 2>&1 && echo "  ✓ Database seed prepared"
@@ -65,10 +78,10 @@ dev: install-prereqs validate ## Start the entire development environment
 	@kubectl apply -f infra/generated/api.yaml >/dev/null 2>&1 && echo "  ✓ API server deployed"
 	@kubectl apply -f infra/generated/frontend.yaml >/dev/null 2>&1 && echo "  ✓ Frontend deployed"
 	@echo ""
-	@echo "Step 7/9: Waiting for services to be healthy..."
+	@echo "\033[33m\033[1m▶ WAITING FOR SERVICES\033[0m"
 	./scripts/wait-for-services.sh
 	@echo ""
-	@echo "Step 8/9: Setting up network connections..."
+	@echo "\033[33m\033[1m▶ NETWORK CONNECTIONS\033[0m"
 	@echo "  Cleaning up any existing connections..."
 	@if [ -d .pids ]; then \
 		for pid_file in .pids/*.pid; do \
@@ -78,23 +91,28 @@ dev: install-prereqs validate ## Start the entire development environment
 	fi
 	@mkdir -p .pids
 	@echo "  Setting up port forwards..."
-	@kubectl port-forward -n $(NAMESPACE) svc/frontend $(FRONTEND_PORT):3000 >/dev/null 2>&1 & echo $$! > .pids/frontend.pid && echo "  ✓ Frontend: http://localhost:$(FRONTEND_PORT)" || (echo "  ⚠️  Frontend port-forward failed" && exit 1)
-	@kubectl port-forward -n $(NAMESPACE) svc/api $(API_PORT):4000 >/dev/null 2>&1 & echo $$! > .pids/api.pid && echo "  ✓ API: http://localhost:$(API_PORT)" || (echo "  ⚠️  API port-forward failed" && exit 1)
-	@kubectl port-forward -n $(NAMESPACE) svc/postgres $(POSTGRES_PORT):5432 >/dev/null 2>&1 & echo $$! > .pids/postgres.pid && echo "  ✓ Database: localhost:$(POSTGRES_PORT)" || (echo "  ⚠️  Database port-forward failed" && exit 1)
-	@kubectl port-forward -n $(NAMESPACE) svc/redis $(REDIS_PORT):6379 >/dev/null 2>&1 & echo $$! > .pids/redis.pid && echo "  ✓ Cache: localhost:$(REDIS_PORT)" || (echo "  ⚠️  Cache port-forward failed" && exit 1)
+	@FRONTEND_PORT_VAL=$$(grep '^export FRONTEND_PORT=' .config.env 2>/dev/null | cut -d'"' -f2 || echo "3000"); \
+	API_PORT_VAL=$$(grep '^export API_PORT=' .config.env 2>/dev/null | cut -d'"' -f2 || echo "4000"); \
+	POSTGRES_PORT_VAL=$$(grep '^export DATABASE_PORT=' .config.env 2>/dev/null | cut -d'"' -f2 || echo "5432"); \
+	REDIS_PORT_VAL=$$(grep '^export REDIS_PORT=' .config.env 2>/dev/null | cut -d'"' -f2 || echo "6379"); \
+	kubectl port-forward -n $(NAMESPACE) svc/frontend $$FRONTEND_PORT_VAL:3000 >/dev/null 2>&1 & echo $$! > .pids/frontend.pid && echo "  ✓ Frontend: http://localhost:$$FRONTEND_PORT_VAL" || (echo "  ⚠️  Frontend port-forward failed" && exit 1); \
+	kubectl port-forward -n $(NAMESPACE) svc/api $$API_PORT_VAL:4000 >/dev/null 2>&1 & echo $$! > .pids/api.pid && echo "  ✓ API: http://localhost:$$API_PORT_VAL" || (echo "  ⚠️  API port-forward failed" && exit 1); \
+	kubectl port-forward -n $(NAMESPACE) svc/postgres $$POSTGRES_PORT_VAL:5432 >/dev/null 2>&1 & echo $$! > .pids/postgres.pid && echo "  ✓ Database: localhost:$$POSTGRES_PORT_VAL" || (echo "  ⚠️  Database port-forward failed" && exit 1); \
+	kubectl port-forward -n $(NAMESPACE) svc/redis $$REDIS_PORT_VAL:6379 >/dev/null 2>&1 & echo $$! > .pids/redis.pid && echo "  ✓ Cache: localhost:$$REDIS_PORT_VAL" || (echo "  ⚠️  Cache port-forward failed" && exit 1)
 	@sleep 2
 	@echo ""
-	@echo "Step 9/9: Environment ready!"
+	@echo "\033[33m\033[1m▶ VALIDATING SERVICES\033[0m"
+	@./scripts/validate-system.sh --services-only
 	@echo ""
-	@echo "════════════════════════════════════════"
-	@echo "✅ Environment is ready!"
-	@echo "════════════════════════════════════════"
+	@echo "\033[32m\033[1m✓ ENVIRONMENT READY\033[0m"
 	@echo ""
-	@echo "🌐 Access your application:"
-	@echo "   • Frontend:   http://localhost:$(FRONTEND_PORT)"
-	@echo "   • API Health: http://localhost:$(API_PORT)/health"
+	@FRONTEND_PORT_VAL=$$(grep '^export FRONTEND_PORT=' .config.env 2>/dev/null | cut -d'"' -f2 || echo "3000"); \
+	API_PORT_VAL=$$(grep '^export API_PORT=' .config.env 2>/dev/null | cut -d'"' -f2 || echo "4000"); \
+	echo "\033[36m\033[1m🌐 Access your application:\033[0m"; \
+	echo "   • Frontend:   http://localhost:$$FRONTEND_PORT_VAL"; \
+	echo "   • API Health: http://localhost:$$API_PORT_VAL/health"
 	@echo ""
-	@echo "💡 Useful commands:"
+	@echo "\033[36m\033[1m💡 Useful commands:\033[0m"
 	@echo "   • make status     - Check service status"
 	@echo "   • make logs       - View all logs"
 	@echo "   • make teardown   - Stop everything"
@@ -158,6 +176,12 @@ clean: ## Remove all Docker images
 	@docker rmi wander-api:latest wander-frontend:latest 2>/dev/null || true
 	@echo "✅ Docker images removed"
 
-validate: ## Run system validation checks
+validate: ## Run all system validation checks
 	@./scripts/validate-system.sh
+
+validate-prereqs: ## Run prerequisite validation checks only
+	@./scripts/validate-system.sh --prerequisites-only
+
+validate-services: ## Run service validation checks only
+	@./scripts/validate-system.sh --services-only
 

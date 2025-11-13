@@ -1,6 +1,15 @@
 #!/bin/bash
 set -e
 
+# Parse arguments
+SKIP_PORTS=false
+PORTS_ONLY=false
+if [ "$1" = "--skip-ports" ]; then
+  SKIP_PORTS=true
+elif [ "$1" = "--ports-only" ]; then
+  PORTS_ONLY=true
+fi
+
 # Detect OS
 OS=$(uname -s)
 
@@ -58,20 +67,45 @@ if ! command -v envsubst &> /dev/null; then
 fi
 echo "✓"
 
-# Check disk space (silent warning)
-DISK_AVAIL=$(df -k . | awk 'NR==2 {print $4}' 2>/dev/null || echo "0")
-if [ "$DISK_AVAIL" -lt 10485760 ] && [ "$DISK_AVAIL" != "0" ]; then
-  echo "  ⚠️  Warning: Low disk space (< 10GB available)"
-fi
+# Skip basic checks if --ports-only is specified
+if [ "$PORTS_ONLY" = true ]; then
+  # Skip to port checks section - don't do basic checks
+  :
+elif [ "$SKIP_PORTS" = true ]; then
+  # Check disk space (silent warning)
+  DISK_AVAIL=$(df -k . | awk 'NR==2 {print $4}' 2>/dev/null || echo "0")
+  if [ "$DISK_AVAIL" -lt 10485760 ] && [ "$DISK_AVAIL" != "0" ]; then
+    echo "  ⚠️  Warning: Low disk space (< 10GB available)"
+  fi
 
-# Check memory (silent warning)
-if [ "$OS" = "Darwin" ]; then
-  MEM_TOTAL=$(sysctl -n hw.memsize 2>/dev/null | awk '{print $1/1024/1024/1024}' || echo "0")
+  # Check memory (silent warning)
+  if [ "$OS" = "Darwin" ]; then
+    MEM_TOTAL=$(sysctl -n hw.memsize 2>/dev/null | awk '{print $1/1024/1024/1024}' || echo "0")
+  else
+    MEM_TOTAL=$(free -g 2>/dev/null | awk 'NR==2 {print $2}' || echo "0")
+  fi
+  if [ "${MEM_TOTAL%.*}" -lt 4 ] && [ "${MEM_TOTAL%.*}" != "0" ]; then
+    echo "  ⚠️  Warning: Low memory (< 4GB available)"
+  fi
+  echo ""
+  echo "✅ All preflight checks passed"
+  exit 0
 else
-  MEM_TOTAL=$(free -g 2>/dev/null | awk 'NR==2 {print $2}' || echo "0")
-fi
-if [ "${MEM_TOTAL%.*}" -lt 4 ] && [ "${MEM_TOTAL%.*}" != "0" ]; then
-  echo "  ⚠️  Warning: Low memory (< 4GB available)"
+  # Check disk space (silent warning)
+  DISK_AVAIL=$(df -k . | awk 'NR==2 {print $4}' 2>/dev/null || echo "0")
+  if [ "$DISK_AVAIL" -lt 10485760 ] && [ "$DISK_AVAIL" != "0" ]; then
+    echo "  ⚠️  Warning: Low disk space (< 10GB available)"
+  fi
+
+  # Check memory (silent warning)
+  if [ "$OS" = "Darwin" ]; then
+    MEM_TOTAL=$(sysctl -n hw.memsize 2>/dev/null | awk '{print $1/1024/1024/1024}' || echo "0")
+  else
+    MEM_TOTAL=$(free -g 2>/dev/null | awk 'NR==2 {print $2}' || echo "0")
+  fi
+  if [ "${MEM_TOTAL%.*}" -lt 4 ] && [ "${MEM_TOTAL%.*}" != "0" ]; then
+    echo "  ⚠️  Warning: Low memory (< 4GB available)"
+  fi
 fi
 
 # Function to check if a port is in use
@@ -129,57 +163,105 @@ update_env_port() {
   fi
 }
 
-# Check and adapt ports
-echo ""
-echo "📡 Checking and configuring ports..."
-
-PORTS_UPDATED=0
-
-# Function to check and configure a single port
-check_and_configure_port() {
-  local DEFAULT_PORT=$1
-  local VAR_NAME=$2
-  
-  # Check current .env value if it exists
-  if [ -f ".env" ] && grep -q "^${VAR_NAME}=" .env; then
-    CURRENT_PORT=$(grep "^${VAR_NAME}=" .env | cut -d'=' -f2)
-  else
-    CURRENT_PORT=$DEFAULT_PORT
-  fi
-  
-  if is_port_in_use $CURRENT_PORT; then
-    echo "⚠️  Port $CURRENT_PORT ($VAR_NAME) is in use"
-    NEW_PORT=$(find_available_port $((CURRENT_PORT + 1)))
-    
-    if [ -n "$NEW_PORT" ]; then
-      echo "   ➜ Using port $NEW_PORT instead"
-      update_env_port "$VAR_NAME" "$NEW_PORT"
-      PORTS_UPDATED=1
-    else
-      echo "❌ Could not find an available port for $VAR_NAME"
-      exit 1
-    fi
-  else
-    echo "✅ Port $CURRENT_PORT ($VAR_NAME) is available"
-    # Ensure the port is set in .env even if it's the default
-    if [ ! -f ".env" ] || ! grep -q "^${VAR_NAME}=" .env; then
-      update_env_port "$VAR_NAME" "$CURRENT_PORT"
-    fi
-  fi
-}
-
-# Check each port
-check_and_configure_port 3000 "FRONTEND_PORT"
-check_and_configure_port 4000 "API_PORT"
-check_and_configure_port 5432 "POSTGRES_PORT"
-check_and_configure_port 6379 "REDIS_PORT"
-
-if [ $PORTS_UPDATED -eq 1 ]; then
+# Check and adapt ports (run if ports-only OR if not skipping)
+if [ "$PORTS_ONLY" = true ] || [ "$SKIP_PORTS" = false ]; then
   echo ""
-  echo "ℹ️  Port configuration updated in .env file"
-  echo "   Review .env to see the new port assignments"
+  echo "📡 Checking and configuring ports..."
+
+  # Load config if .config.env doesn't exist but config.yaml does
+  if [ ! -f ".config.env" ] && [ -f "config.yaml" ]; then
+    if command -v node &> /dev/null; then
+      node scripts/load-config.js >/dev/null 2>&1 || true
+    fi
+  fi
+
+  PORTS_UPDATED=0
+
+  # Function to get port from config
+  get_port_from_config() {
+    local VAR_NAME=$1
+    local DEFAULT_PORT=$2
+    
+    # Map POSTGRES_PORT to DATABASE_PORT for .config.env lookup
+    local CONFIG_VAR_NAME="$VAR_NAME"
+    if [ "$VAR_NAME" = "POSTGRES_PORT" ]; then
+      CONFIG_VAR_NAME="DATABASE_PORT"
+    fi
+    
+    # First try .config.env (generated from config.yaml)
+    if [ -f ".config.env" ]; then
+      # .config.env has format: export FRONTEND_PORT="3005"
+      local port=$(grep "^export ${CONFIG_VAR_NAME}=" .config.env 2>/dev/null | cut -d'"' -f2)
+      if [ -n "$port" ]; then
+        echo "$port"
+        return 0
+      fi
+    fi
+    
+    # Fallback to .env file
+    if [ -f ".env" ] && grep -q "^${VAR_NAME}=" .env; then
+      local port=$(grep "^${VAR_NAME}=" .env | cut -d'=' -f2)
+      if [ -n "$port" ]; then
+        echo "$port"
+        return 0
+      fi
+    fi
+    
+    # Use default
+    echo "$DEFAULT_PORT"
+  }
+
+  # Function to check and configure a single port
+  check_and_configure_port() {
+    local DEFAULT_PORT=$1
+    local VAR_NAME=$2
+    
+    # Get port from config file or use default
+    CURRENT_PORT=$(get_port_from_config "$VAR_NAME" "$DEFAULT_PORT")
+    
+    if is_port_in_use $CURRENT_PORT; then
+      echo "⚠️  Port $CURRENT_PORT ($VAR_NAME) is in use"
+      NEW_PORT=$(find_available_port $((CURRENT_PORT + 1)))
+      
+      if [ -n "$NEW_PORT" ]; then
+        echo "   ➜ Using port $NEW_PORT instead"
+        update_env_port "$VAR_NAME" "$NEW_PORT"
+        PORTS_UPDATED=1
+      else
+        echo "❌ Could not find an available port for $VAR_NAME"
+        exit 1
+      fi
+    else
+      echo "✅ Port $CURRENT_PORT ($VAR_NAME) is available"
+      # Ensure the port is set in .env even if it's the default
+      if [ ! -f ".env" ] || ! grep -q "^${VAR_NAME}=" .env; then
+        update_env_port "$VAR_NAME" "$CURRENT_PORT"
+      fi
+    fi
+  }
+
+  # Check each port
+  check_and_configure_port 3000 "FRONTEND_PORT"
+  check_and_configure_port 4000 "API_PORT"
+  check_and_configure_port 5432 "POSTGRES_PORT"
+  check_and_configure_port 6379 "REDIS_PORT"
+
+  if [ $PORTS_UPDATED -eq 1 ]; then
+    echo ""
+    echo "ℹ️  Port configuration updated in .env file"
+    echo "   Review .env to see the new port assignments"
+  fi
+
+  echo ""
+  echo "✅ Port checks completed"
 fi
 
+# Exit if we were only doing port checks or skipping ports
+if [ "$PORTS_ONLY" = true ] || [ "$SKIP_PORTS" = true ]; then
+  exit 0
+fi
+
+# If we get here, we did all checks including ports
 echo ""
 echo "✅ All preflight checks passed"
 exit 0

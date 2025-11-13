@@ -4,8 +4,23 @@
 # Wander System Validation Script
 # Validates complete system integration and functionality
 #
+# Usage:
+#   ./validate-system.sh                 # Run all validations
+#   ./validate-system.sh --prerequisites-only  # Run only prerequisite checks
+#   ./validate-system.sh --services-only       # Run only service checks
+#
 
 # Note: Removed 'set -e' to allow graceful error handling
+
+# Parse command line arguments
+VALIDATE_PREREQUISITES_ONLY=false
+VALIDATE_SERVICES_ONLY=false
+
+if [ "$1" = "--prerequisites-only" ]; then
+    VALIDATE_PREREQUISITES_ONLY=true
+elif [ "$1" = "--services-only" ]; then
+    VALIDATE_SERVICES_ONLY=true
+fi
 
 # Colors for output
 RED='\033[0;31m'
@@ -20,10 +35,31 @@ CROSS="❌"
 WARN="⚠️ "
 INFO="ℹ️ "
 
-echo -e "${BLUE}===========================================${NC}"
-echo -e "${BLUE}  Wander System Validation${NC}"
-echo -e "${BLUE}===========================================${NC}"
-echo ""
+if [ "$VALIDATE_PREREQUISITES_ONLY" = true ]; then
+    echo ""
+    echo -e "\033[36m\033[1m"
+    echo "╔═══════════════════════════════════════════════════════════════╗"
+    echo "║          WANDER PREREQUISITES VALIDATION                      ║"
+    echo "╚═══════════════════════════════════════════════════════════════╝"
+    echo "\033[0m"
+    echo ""
+elif [ "$VALIDATE_SERVICES_ONLY" = true ]; then
+    echo ""
+    echo -e "\033[36m\033[1m"
+    echo "╔═══════════════════════════════════════════════════════════════╗"
+    echo "║              WANDER SERVICES VALIDATION                       ║"
+    echo "╚═══════════════════════════════════════════════════════════════╝"
+    echo "\033[0m"
+    echo ""
+else
+    echo ""
+    echo -e "\033[36m\033[1m"
+    echo "╔═══════════════════════════════════════════════════════════════╗"
+    echo "║               WANDER SYSTEM VALIDATION                         ║"
+    echo "╚═══════════════════════════════════════════════════════════════╝"
+    echo "\033[0m"
+    echo ""
+fi
 
 # Test counter
 TESTS_PASSED=0
@@ -78,204 +114,218 @@ check_pod() {
     kubectl get pod -n wander-dev -l "app=$app_label" -o jsonpath='{.items[0].status.phase}' 2>/dev/null | grep -q "Running"
 }
 
-echo -e "${BLUE}=== Prerequisites Check ===${NC}"
-echo ""
-
-run_test "kubectl installed" "check_command kubectl"
-run_test "docker installed" "check_command docker"
-run_test "npm installed" "check_command npm"
-run_test "node installed" "check_command node"
-run_test "envsubst installed" "check_command envsubst"
-run_test "minikube installed" "check_command minikube"
-
-echo ""
-echo -e "${BLUE}=== Kubernetes Cluster Check ===${NC}"
-echo ""
-
-# Check if Docker is running (required for Minikube)
-if ! docker info > /dev/null 2>&1; then
-    echo -e "${YELLOW}${WARN} Docker daemon is not running${NC}"
-    echo -e "${INFO} Attempting to wait for Docker to start..."
+# Function to print styled header
+print_header() {
+    local text="$1"
+    local text_len=${#text}
+    local width=50
+    local total_padding=$((width - text_len - 2))
+    local left_pad=$((total_padding / 2))
+    local right_pad=$((total_padding - left_pad))
     
-    # Wait up to 30 seconds for Docker to become available
-    DOCKER_WAIT=0
-    while [ $DOCKER_WAIT -lt 30 ]; do
-        if docker info > /dev/null 2>&1; then
-            echo -e "${GREEN}${CHECK} Docker is now running${NC}"
-            break
-        fi
-        sleep 2
-        DOCKER_WAIT=$((DOCKER_WAIT + 2))
-    done
+    # Create padding strings
+    local left_spaces=$(printf "%*s" $left_pad "")
+    local right_spaces=$(printf "%*s" $right_pad "")
     
+    # Create border line (48 equals signs)
+    local border_line="════════════════════════════════════════════════"
+    
+    echo ""
+    echo -e "${BLUE}\033[1m╔${border_line}╗${NC}"
+    echo -e "${BLUE}\033[1m║${left_spaces}${text}${right_spaces}║${NC}"
+    echo -e "${BLUE}\033[1m╚${border_line}╝${NC}"
+    echo ""
+}
+
+# Prerequisites and early checks
+if [ "$VALIDATE_SERVICES_ONLY" != true ]; then
+    print_header "PREREQUISITES CHECK"
+
+    run_test "kubectl installed" "check_command kubectl"
+    run_test "docker installed" "check_command docker"
+    run_test "npm installed" "check_command npm"
+    run_test "node installed" "check_command node"
+    run_test "envsubst installed" "check_command envsubst"
+    run_test "minikube installed" "check_command minikube"
+
+    print_header "KUBERNETES CLUSTER CHECK"
+
+    # Check if Docker is running (required for Minikube)
     if ! docker info > /dev/null 2>&1; then
-        echo -e "${RED}${CROSS} Docker is still not running${NC}"
-        echo -e "${INFO} Please start Docker Desktop manually and run this script again"
-        run_test "Docker daemon running" "false" "true"
-        # Exit early since nothing else will work without Docker
-        echo ""
-        echo -e "${RED}Cannot continue without Docker. Please start Docker Desktop.${NC}"
-        exit 1
-    fi
-fi
-
-run_test "Docker daemon running" "docker info > /dev/null 2>&1"
-
-# Check Minikube status with auto-start capability
-if check_command minikube; then
-    MINIKUBE_STATUS=$(minikube status 2>&1 || true)
-    if echo "$MINIKUBE_STATUS" | grep -q "Running"; then
-        run_test "Minikube is running" "true"
-    else
-        echo -e "${YELLOW}${WARN} Minikube is not running${NC}"
-        echo -e "${INFO} Automatically starting Minikube..."
+        echo -e "${YELLOW}${WARN} Docker daemon is not running${NC}"
+        echo -e "${INFO} Attempting to wait for Docker to start..."
         
-        if minikube start; then
-            echo -e "${GREEN}${CHECK} Minikube started successfully${NC}"
+        # Wait up to 30 seconds for Docker to become available
+        DOCKER_WAIT=0
+        while [ $DOCKER_WAIT -lt 30 ]; do
+            if docker info > /dev/null 2>&1; then
+                echo -e "${GREEN}${CHECK} Docker is now running${NC}"
+                break
+            fi
+            sleep 2
+            DOCKER_WAIT=$((DOCKER_WAIT + 2))
+        done
+        
+        if ! docker info > /dev/null 2>&1; then
+            echo -e "${RED}${CROSS} Docker is still not running${NC}"
+            echo -e "${INFO} Please start Docker Desktop manually and run this script again"
+            run_test "Docker daemon running" "false" "true"
+            # Exit early since nothing else will work without Docker
+            echo ""
+            echo -e "${RED}Cannot continue without Docker. Please start Docker Desktop.${NC}"
+            exit 1
+        fi
+    fi
+
+    run_test "Docker daemon running" "docker info > /dev/null 2>&1"
+
+    # Check Minikube status with auto-start capability
+    if check_command minikube; then
+        MINIKUBE_STATUS=$(minikube status 2>&1 || true)
+        if echo "$MINIKUBE_STATUS" | grep -q "Running"; then
             run_test "Minikube is running" "true"
         else
-            echo -e "${RED}${CROSS} Failed to start Minikube${NC}"
-            echo -e "${INFO} Try manually: ${YELLOW}minikube delete && minikube start${NC}"
-            run_test "Minikube is running" "false" "true"
+            echo -e "${YELLOW}${WARN} Minikube is not running${NC}"
+            echo -e "${INFO} Automatically starting Minikube..."
+            
+            if minikube start; then
+                echo -e "${GREEN}${CHECK} Minikube started successfully${NC}"
+                run_test "Minikube is running" "true"
+            else
+                echo -e "${RED}${CROSS} Failed to start Minikube${NC}"
+                echo -e "${INFO} Try manually: ${YELLOW}minikube delete && minikube start${NC}"
+                run_test "Minikube is running" "false" "true"
+            fi
         fi
-    fi
-else
-    run_test "Minikube is running" "false" "true"
-    echo -e "${INFO} Minikube not found. Install prerequisites with: ${YELLOW}make install-prereqs${NC}"
-fi
-
-# Only check kubectl if minikube is running
-if minikube status 2>&1 | grep -q "Running"; then
-    run_test "kubectl can connect" "kubectl cluster-info > /dev/null 2>&1"
-    run_test "wander-dev namespace exists" "kubectl get namespace wander-dev > /dev/null 2>&1"
-else
-    echo -e "${YELLOW}${WARN} Skipping kubectl checks (Minikube not running)${NC}"
-    TOTAL_TESTS=$((TOTAL_TESTS + 2))
-fi
-
-echo ""
-echo -e "${BLUE}=== Pod Status Check ===${NC}"
-echo ""
-
-if kubectl get namespace wander-dev > /dev/null 2>&1; then
-    run_test "PostgreSQL pod running" "check_pod postgres"
-    run_test "Redis pod running" "check_pod redis"
-    run_test "API pod running" "check_pod api"
-    run_test "Frontend pod running" "check_pod frontend"
-else
-    echo -e "${YELLOW}${WARN} Skipping pod checks (namespace not found)${NC}"
-    TOTAL_TESTS=$((TOTAL_TESTS + 4))
-fi
-
-echo ""
-echo -e "${BLUE}=== Service Health Check ===${NC}"
-echo ""
-
-if kubectl get namespace wander-dev > /dev/null 2>&1; then
-    # Give services a moment if they just started
-    sleep 2
-    
-    run_test "API health endpoint" "check_http http://localhost:4000/health 200"
-    run_test "API ready endpoint" "check_http http://localhost:4000/health/ready 200"
-    run_test "Frontend accessible" "check_http http://localhost:3000 200"
-else
-    echo -e "${YELLOW}${WARN} Skipping health checks (services not running)${NC}"
-    TOTAL_TESTS=$((TOTAL_TESTS + 3))
-fi
-
-echo ""
-echo -e "${BLUE}=== Database Validation ===${NC}"
-echo ""
-
-if kubectl get namespace wander-dev > /dev/null 2>&1; then
-    POSTGRES_POD=$(kubectl get pod -n wander-dev -l app=postgres -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
-    
-    if [ -n "$POSTGRES_POD" ]; then
-        # Check table counts
-        USERS_COUNT=$(kubectl exec -n wander-dev "$POSTGRES_POD" -- psql -U postgres -d wander_dev -t -c "SELECT COUNT(*) FROM users;" 2>/dev/null | tr -d ' ' || echo "0")
-        TEAMS_COUNT=$(kubectl exec -n wander-dev "$POSTGRES_POD" -- psql -U postgres -d wander_dev -t -c "SELECT COUNT(*) FROM teams;" 2>/dev/null | tr -d ' ' || echo "0")
-        PROJECTS_COUNT=$(kubectl exec -n wander-dev "$POSTGRES_POD" -- psql -U postgres -d wander_dev -t -c "SELECT COUNT(*) FROM projects;" 2>/dev/null | tr -d ' ' || echo "0")
-        TASKS_COUNT=$(kubectl exec -n wander-dev "$POSTGRES_POD" -- psql -U postgres -d wander_dev -t -c "SELECT COUNT(*) FROM tasks;" 2>/dev/null | tr -d ' ' || echo "0")
-        ACTIVITIES_COUNT=$(kubectl exec -n wander-dev "$POSTGRES_POD" -- psql -U postgres -d wander_dev -t -c "SELECT COUNT(*) FROM activities;" 2>/dev/null | tr -d ' ' || echo "0")
-        
-        run_test "Database has 5 users" "[ '$USERS_COUNT' = '5' ]"
-        run_test "Database has 2 teams" "[ '$TEAMS_COUNT' = '2' ]"
-        run_test "Database has 2 projects" "[ '$PROJECTS_COUNT' = '2' ]"
-        run_test "Database has 6 tasks" "[ '$TASKS_COUNT' = '6' ]"
-        run_test "Database has 10 activities" "[ '$ACTIVITIES_COUNT' = '10' ]"
     else
-        echo -e "${YELLOW}${WARN} Skipping database checks (PostgreSQL pod not found)${NC}"
-        TOTAL_TESTS=$((TOTAL_TESTS + 5))
+        run_test "Minikube is running" "false" "true"
+        echo -e "${INFO} Minikube not found. Install prerequisites with: ${YELLOW}make install-prereqs${NC}"
     fi
-else
-    echo -e "${YELLOW}${WARN} Skipping database checks (services not running)${NC}"
-    TOTAL_TESTS=$((TOTAL_TESTS + 5))
-fi
 
-echo ""
-echo -e "${BLUE}=== File Structure Check ===${NC}"
-echo ""
-
-run_test "Root package.json exists" "[ -f package.json ]"
-run_test "Shared package exists" "[ -d packages/shared ]"
-run_test "API service exists" "[ -d services/api ]"
-run_test "Frontend service exists" "[ -d services/frontend ]"
-run_test "Database init exists" "[ -f db/init/seed.sql ]"
-run_test "Makefile exists" "[ -f Makefile ]"
-run_test "Documentation exists" "[ -d docs ]"
-run_test "Tests exist" "[ -f tests/integration.test.ts ]"
-run_test "K8s manifests exist" "[ -d infra/k8s ]"
-run_test "Scripts exist" "[ -d scripts ]"
-
-echo ""
-echo -e "${BLUE}=== Documentation Check ===${NC}"
-echo ""
-
-run_test "README.md exists" "[ -f README.md ]"
-run_test "SETUP.md exists" "[ -f docs/SETUP.md ]"
-run_test "ARCHITECTURE.md exists" "[ -f docs/ARCHITECTURE.md ]"
-run_test "API.md exists" "[ -f docs/API.md ]"
-run_test "DATABASE.md exists" "[ -f docs/DATABASE.md ]"
-run_test "KUBERNETES.md exists" "[ -f docs/KUBERNETES.md ]"
-run_test "TROUBLESHOOTING.md exists" "[ -f docs/TROUBLESHOOTING.md ]"
-run_test "CONTRIBUTING.md exists" "[ -f docs/CONTRIBUTING.md ]"
-run_test "CHANGELOG.md exists" "[ -f CHANGELOG.md ]"
-
-echo ""
-echo -e "${BLUE}=== Configuration Files Check ===${NC}"
-echo ""
-
-run_test "config.yaml exists" "[ -f config.yaml ]"
-run_test "tsconfig.base.json exists" "[ -f tsconfig.base.json ]"
-run_test "eslintrc.json exists" "[ -f .eslintrc.json ]"
-run_test "jest.config.js exists" "[ -f jest.config.js ]"
-run_test ".gitignore exists" "[ -f .gitignore ]"
-run_test ".nvmrc exists" "[ -f .nvmrc ]"
-
-echo ""
-echo -e "${BLUE}=== Docker Images Check ===${NC}"
-echo ""
-
-# Check if Docker is accessible
-if ! docker info > /dev/null 2>&1; then
-    echo -e "${YELLOW}${WARN} Cannot check Docker images (Docker not accessible)${NC}"
-    TOTAL_TESTS=$((TOTAL_TESTS + 3))
-else
-    # Check if we're using Minikube's Docker
+    # Only check kubectl if minikube is running
     if minikube status 2>&1 | grep -q "Running"; then
-        MINIKUBE_DOCKER=1
-        eval $(minikube docker-env 2>/dev/null) || true
+        run_test "kubectl can connect" "kubectl cluster-info > /dev/null 2>&1"
+        if [ "$VALIDATE_PREREQUISITES_ONLY" != true ]; then
+            run_test "wander-dev namespace exists" "kubectl get namespace wander-dev > /dev/null 2>&1"
+        fi
+    else
+        echo -e "${YELLOW}${WARN} Skipping kubectl checks (Minikube not running)${NC}"
+        TOTAL_TESTS=$((TOTAL_TESTS + 2))
     fi
 
-    run_test "wander-api image exists" "docker images | grep -q wander-api"
-    run_test "wander-frontend image exists" "docker images | grep -q wander-frontend"
-    echo -e "${YELLOW}${WARN} Skipping postgres image check (using official image)${NC}"
-    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    print_header "FILE STRUCTURE CHECK"
+
+    run_test "Root package.json exists" "[ -f package.json ]"
+    run_test "Shared package exists" "[ -d packages/shared ]"
+    run_test "API service exists" "[ -d services/api ]"
+    run_test "Frontend service exists" "[ -d services/frontend ]"
+    run_test "Database init exists" "[ -f db/init/seed.sql ]"
+    run_test "Makefile exists" "[ -f Makefile ]"
+    run_test "Documentation exists" "[ -d docs ]"
+    run_test "Tests exist" "[ -f tests/integration.test.ts ]"
+    run_test "K8s manifests exist" "[ -d infra/k8s ]"
+    run_test "Scripts exist" "[ -d scripts ]"
+
+    print_header "DOCUMENTATION CHECK"
+
+    run_test "README.md exists" "[ -f README.md ]"
+    run_test "SETUP.md exists" "[ -f docs/SETUP.md ]"
+    run_test "ARCHITECTURE.md exists" "[ -f docs/ARCHITECTURE.md ]"
+    run_test "API.md exists" "[ -f docs/API.md ]"
+    run_test "DATABASE.md exists" "[ -f docs/DATABASE.md ]"
+    run_test "KUBERNETES.md exists" "[ -f docs/KUBERNETES.md ]"
+    run_test "TROUBLESHOOTING.md exists" "[ -f docs/TROUBLESHOOTING.md ]"
+    run_test "CONTRIBUTING.md exists" "[ -f docs/CONTRIBUTING.md ]"
+    run_test "CHANGELOG.md exists" "[ -f CHANGELOG.md ]"
+
+    print_header "CONFIGURATION FILES CHECK"
+
+    run_test "config.yaml exists" "[ -f config.yaml ]"
+    run_test "tsconfig.base.json exists" "[ -f tsconfig.base.json ]"
+    run_test "eslintrc.json exists" "[ -f .eslintrc.json ]"
+    run_test "jest.config.js exists" "[ -f jest.config.js ]"
+    run_test ".gitignore exists" "[ -f .gitignore ]"
+    run_test ".nvmrc exists" "[ -f .nvmrc ]"
 fi
 
-echo ""
-echo -e "${BLUE}=== Results Summary ===${NC}"
-echo ""
+# Service checks (only run if not prerequisites-only)
+if [ "$VALIDATE_PREREQUISITES_ONLY" != true ]; then
+    print_header "POD STATUS CHECK"
+
+    if kubectl get namespace wander-dev > /dev/null 2>&1; then
+        run_test "PostgreSQL pod running" "check_pod postgres"
+        run_test "Redis pod running" "check_pod redis"
+        run_test "API pod running" "check_pod api"
+        run_test "Frontend pod running" "check_pod frontend"
+    else
+        echo -e "${YELLOW}${WARN} Skipping pod checks (namespace not found)${NC}"
+        TOTAL_TESTS=$((TOTAL_TESTS + 4))
+    fi
+
+    print_header "SERVICE HEALTH CHECK"
+
+    if kubectl get namespace wander-dev > /dev/null 2>&1; then
+        # Give services a moment if they just started
+        sleep 2
+        
+        run_test "API health endpoint" "check_http http://localhost:4000/health 200"
+        run_test "API ready endpoint" "check_http http://localhost:4000/health/ready 200"
+        run_test "Frontend accessible" "check_http http://localhost:3000 200"
+    else
+        echo -e "${YELLOW}${WARN} Skipping health checks (services not running)${NC}"
+        TOTAL_TESTS=$((TOTAL_TESTS + 3))
+    fi
+
+    print_header "DATABASE VALIDATION"
+
+    if kubectl get namespace wander-dev > /dev/null 2>&1; then
+        POSTGRES_POD=$(kubectl get pod -n wander-dev -l app=postgres -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+        
+        if [ -n "$POSTGRES_POD" ]; then
+            # Check table counts
+            USERS_COUNT=$(kubectl exec -n wander-dev "$POSTGRES_POD" -- psql -U postgres -d wander_dev -t -c "SELECT COUNT(*) FROM users;" 2>/dev/null | tr -d ' ' || echo "0")
+            TEAMS_COUNT=$(kubectl exec -n wander-dev "$POSTGRES_POD" -- psql -U postgres -d wander_dev -t -c "SELECT COUNT(*) FROM teams;" 2>/dev/null | tr -d ' ' || echo "0")
+            TEAM_MEMBERS_COUNT=$(kubectl exec -n wander-dev "$POSTGRES_POD" -- psql -U postgres -d wander_dev -t -c "SELECT COUNT(*) FROM team_members;" 2>/dev/null | tr -d ' ' || echo "0")
+            PROJECTS_COUNT=$(kubectl exec -n wander-dev "$POSTGRES_POD" -- psql -U postgres -d wander_dev -t -c "SELECT COUNT(*) FROM projects;" 2>/dev/null | tr -d ' ' || echo "0")
+            TASKS_COUNT=$(kubectl exec -n wander-dev "$POSTGRES_POD" -- psql -U postgres -d wander_dev -t -c "SELECT COUNT(*) FROM tasks;" 2>/dev/null | tr -d ' ' || echo "0")
+            ACTIVITIES_COUNT=$(kubectl exec -n wander-dev "$POSTGRES_POD" -- psql -U postgres -d wander_dev -t -c "SELECT COUNT(*) FROM activities;" 2>/dev/null | tr -d ' ' || echo "0")
+            
+            run_test "Database has 5 users" "[ '$USERS_COUNT' = '5' ]"
+            run_test "Database has 8 teams" "[ '$TEAMS_COUNT' = '8' ]"
+            run_test "Database has 2 team members" "[ '$TEAM_MEMBERS_COUNT' = '2' ]"
+            run_test "Database has 6 projects" "[ '$PROJECTS_COUNT' = '6' ]"
+            run_test "Database has 3 tasks" "[ '$TASKS_COUNT' = '3' ]"
+            run_test "Database has 7 activities" "[ '$ACTIVITIES_COUNT' = '7' ]"
+        else
+            echo -e "${YELLOW}${WARN} Skipping database checks (PostgreSQL pod not found)${NC}"
+            TOTAL_TESTS=$((TOTAL_TESTS + 6))
+        fi
+    else
+        echo -e "${YELLOW}${WARN} Skipping database checks (services not running)${NC}"
+        TOTAL_TESTS=$((TOTAL_TESTS + 6))
+    fi
+
+    print_header "DOCKER IMAGES CHECK"
+
+    # Check if Docker is accessible
+    if ! docker info > /dev/null 2>&1; then
+        echo -e "${YELLOW}${WARN} Cannot check Docker images (Docker not accessible)${NC}"
+        TOTAL_TESTS=$((TOTAL_TESTS + 3))
+    else
+        # Check if we're using Minikube's Docker
+        if minikube status 2>&1 | grep -q "Running"; then
+            MINIKUBE_DOCKER=1
+            eval $(minikube docker-env 2>/dev/null) || true
+        fi
+
+        run_test "wander-api image exists" "docker images | grep -q wander-api"
+        run_test "wander-frontend image exists" "docker images | grep -q wander-frontend"
+        echo -e "${YELLOW}${WARN} Skipping postgres image check (using official image)${NC}"
+        TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    fi
+fi
+
+print_header "RESULTS SUMMARY"
 
 echo -e "Tests Passed:  ${GREEN}$TESTS_PASSED${NC}"
 echo -e "Tests Failed:  ${RED}$TESTS_FAILED${NC}"

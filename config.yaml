@@ -13,7 +13,7 @@ defaults:
     logLevel: debug
   frontend:
     host: 0.0.0.0
-    port: 3005
+    port: 3000
     apiUrl: http://localhost:4000
   redis:
     host: redis

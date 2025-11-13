@@ -20,7 +20,7 @@ const CONFIG_EXAMPLE_FILE = path.join(__dirname, '..', 'config.yaml.example');
 const HTML_FILE = path.join(__dirname, 'config-editor.html');
 const START_PORT = 8888;
 const MAX_PORT_ATTEMPTS = 10;
-const TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const TIMEOUT_MS = 30 * 1000; // 30 seconds - if user closes browser, continue quickly
 
 let server;
 let timeoutId;
@@ -195,7 +195,7 @@ function openBrowser(url) {
  */
 function startTimeout() {
   timeoutId = setTimeout(() => {
-    console.error('⏱️  Timeout: No configuration saved. Continuing with existing config...');
+    console.log('⏱️  Configuration editor closed. Continuing with existing config...');
     process.exit(0);
   }, TIMEOUT_MS);
 }
@@ -245,6 +245,21 @@ function handleRequest(req, res) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: e.message }));
     }
+    return;
+  }
+  
+  // API: Skip/Close config editor
+  if (req.method === 'POST' && url.pathname === '/api/skip') {
+    // Consume request body (may be empty from sendBeacon)
+    req.on('data', () => {});
+    req.on('end', () => {
+      stopTimeout();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, message: 'Configuration editor closed' }));
+      setTimeout(() => {
+        process.exit(0);
+      }, 100);
+    });
     return;
   }
   

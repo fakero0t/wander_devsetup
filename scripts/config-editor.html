@@ -809,11 +809,37 @@
       });
     });
     
-    // Before unload warning
+    // Notify server when window is closed
+    async function notifySkip() {
+      try {
+        // Use sendBeacon for reliability during page unload
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon('/api/skip', '');
+        } else {
+          // Fallback to fetch
+          await fetch('/api/skip', { method: 'POST', keepalive: true });
+        }
+      } catch (e) {
+        // Ignore errors - window is closing anyway
+      }
+    }
+    
+    // Before unload - notify server and warn about unsaved changes
     window.addEventListener('beforeunload', (e) => {
+      // Notify server that window is closing
+      notifySkip();
+      
       if (hasUnsavedChanges) {
         e.preventDefault();
         e.returnValue = '';
+      }
+    });
+    
+    // Also handle visibility change (tab switching/backgrounding)
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        // Tab is hidden - could be closing or switching
+        // We'll let the timeout handle it
       }
     });
     
